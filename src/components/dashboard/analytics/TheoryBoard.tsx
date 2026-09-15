@@ -25,6 +25,33 @@ export default function TheoryBoard({ onJumpToLead, data }: TheoryBoardProps) {
 
     const currentTheory = theories.find((t) => t.version === activeVersion) || theories[0];
 
+    if (theories.length === 0 || !currentTheory) {
+        return (
+            <div className="flex flex-col gap-4 font-sans">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-surface-300 pb-3">
+                    <div>
+                        <h3 className="text-base font-bold text-surface-900 tracking-tight flex items-center gap-2">
+                            <Icon name="scale-justice" size={16} className="text-insignia-400" />
+                            <span>Crime Reconstruction Theories</span>
+                        </h3>
+                        <p className="text-xs text-surface-500 mt-0.5">
+                            Multi-hypothesis event sequence synthesized by link analysis models.
+                        </p>
+                    </div>
+                </div>
+                <div className="rounded-xl border border-surface-300 bg-surface-100 p-8 text-center flex flex-col items-center justify-center">
+                    <div className="h-10 w-10 rounded-full bg-surface-200 flex items-center justify-center text-surface-400 mb-2">
+                        <Icon name="scale-justice" size={20} />
+                    </div>
+                    <h4 className="text-sm font-bold text-surface-800">No Crime Theories Synthesized Yet</h4>
+                    <p className="mt-1 text-xs text-surface-500 max-w-sm">
+                        Hypotheses and crime theories are dynamically compiled once multiple corroborated evidence files are evaluated by the GNN linker.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-col gap-4 font-sans">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-surface-300 pb-3">
@@ -69,9 +96,9 @@ export default function TheoryBoard({ onJumpToLead, data }: TheoryBoardProps) {
                             <span className="h-1.5 w-1.5 rounded-full bg-purple-400" />
                             <span>Investigative hypothesis — not a finding</span>
                         </span>
-                        {currentTheory.supersedesVersion && (
+                        {currentTheory?.supersedesVersion && (
                             <span className="text-[11px] font-mono text-surface-500">
-                                (supersedes {currentTheory.supersedesVersion} upon recovering laptop ledgers)
+                                (supersedes {currentTheory?.supersedesVersion} upon recovering laptop ledgers)
                             </span>
                         )}
                     </div>

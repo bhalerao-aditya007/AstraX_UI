@@ -40,7 +40,18 @@ export default function MOMatchList({ onSelectMatch, data }: MOMatchListProps) {
             </div>
 
             <div className="space-y-3">
-                {matches.map((item) => {
+                {matches.length === 0 ? (
+                    <div className="rounded-xl border border-surface-300 bg-surface-100 p-8 text-center flex flex-col items-center justify-center">
+                        <div className="h-10 w-10 rounded-full bg-surface-200 flex items-center justify-center text-surface-400 mb-2">
+                            <Icon name="radar" size={20} />
+                        </div>
+                        <h4 className="text-sm font-bold text-surface-800">No Historical MO Matches Found</h4>
+                        <p className="mt-1 text-xs text-surface-500 max-w-sm">
+                            No cross-jurisdiction serial matches detected above the similarity threshold for this case.
+                        </p>
+                    </div>
+                ) : (
+                    matches.map((item) => {
                     const isExpanded = expandedId === item.id;
 
                     return (
@@ -177,7 +188,7 @@ export default function MOMatchList({ onSelectMatch, data }: MOMatchListProps) {
                             )}
                         </div>
                     );
-                })}
+                }))}
             </div>
         </div>
     );
