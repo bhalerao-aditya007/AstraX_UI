@@ -92,7 +92,7 @@ ASR Engine: Whisper-Large-v3 Multi-Dialect Hindustani Transcription
 [00:00:05] Speaker 1 (Rajesh Sharma): "Bhaiji, sun rahe ho? 24.5 peti cash physically Mori Gate terminal pe receiver se collect kar liya hai."
 [00:00:32] Speaker 2 (Tariq 'Kabootar' Khan): "Kahan hai abhi maal? Vikram ke paas hai ya tumhare paas?"
 [00:00:48] Speaker 1 (Rajesh Sharma): "Vikram Creta leke nikla hai (DL-01-AB-1234). Imran bhi saath mein hai safety ke liye. Direct Axis Bank Chandni Chowk branch drop karenge."
-[00:01:15] Speaker 2 (Tariq 'Kabootar' Khan): "Ek baat dhyaan rakhna—single deposit 50 hazaar se upar mat daalna. PMLA alert trigger ho jayega system mein. 49-49 hazaar ke alag-alag vouchers bana ke Axis account 4901238910 mein struct karo."
+[00:01:15] Speaker 2 (Tariq 'Kabootar' Khan): "Ek baat dhyaan rakhna-single deposit 50 hazaar se upar mat daalna. PMLA alert trigger ho jayega system mein. 49-49 hazaar ke alag-alag vouchers bana ke Axis account 4901238910 mein struct karo."
 [00:01:50] Speaker 1 (Rajesh Sharma): "Haan Bhaiji, 10 alag-alag transactions mein 49 hazar daal rahe hain subah 10 baje tak. Total 4.9 lakh account mein aate hi instant RTGS se Dubai export firm Al-Noor ko offshore transfer ho jayega."
 [00:02:25] Speaker 2 (Tariq 'Kabootar' Khan): "Sahi hai. Kaam hone ke baad dono phone ke SIM card destroy kar dena aur phone Mori Gate locker mein rakh dena."
 `;
@@ -394,54 +394,81 @@ export function synthesizeFactSheetFromDocuments(
 
     // Synthesize verified known relationships between extracted actors
     const knownRelationships: FactSheetData["knownRelationships"] = [];
-    if (whoList.some(p => p.name.includes("Vikram")) && whoList.some(p => p.name.includes("Rajesh"))) {
-        knownRelationships.push({
-            id: "rel-1",
-            source: "Vikram Malhotra",
-            target: "Rajesh Sharma",
-            relationship: "Structured Cash Courier & Account Depositor",
-            citation: { documentTitle: "Axis_Bank_Structuring_4901.csv", confidenceScore: 0.98 },
-        });
-    }
-    if (whoList.some(p => p.name.includes("Rajesh")) && whoList.some(p => p.name.includes("Tariq"))) {
-        knownRelationships.push({
-            id: "rel-2",
-            source: "Rajesh Sharma",
-            target: "Tariq 'Kabootar' Khan",
-            relationship: "Hawala Syndicate Associate (Wiretap Session 04)",
-            citation: { documentTitle: "Wiretap_Intercept_Line9811_Session4.txt", confidenceScore: 0.96 },
-        });
-    }
-    if (whoList.some(p => p.name.includes("Vikram")) && whoList.some(p => p.name.includes("Imran"))) {
-        knownRelationships.push({
-            id: "rel-3",
-            source: "Vikram Malhotra",
-            target: "Imran Qureshi",
-            relationship: "Co-occupants in Seized Vehicle DL-01-AB-1234",
-            citation: { documentTitle: "CCTV_ANPR_KashmereGate_Toll_Cam04.txt", confidenceScore: 0.94 },
-        });
+
+    // Dynamic relationship detection — connect any pair of accused who appear in the same document
+    const personDocMap = new Map<string, string[]>();
+    documents.forEach((doc) => {
+        const ext = (doc.extracted_information as Record<string, any>) || {};
+        if (Array.isArray(ext.accused)) {
+            ext.accused.forEach((acc: any) => {
+                if (!acc.name) return;
+                const existing = personDocMap.get(acc.name) || [];
+                if (!existing.includes(doc.title)) existing.push(doc.title);
+                personDocMap.set(acc.name, existing);
+            });
+        }
+    });
+
+    // Build relationships from co-occurrence in documents
+    const allNames = Array.from(personDocMap.keys());
+    const addedRels = new Set<string>();
+    for (let i = 0; i < allNames.length; i++) {
+        for (let j = i + 1; j < allNames.length; j++) {
+            const nameA = allNames[i];
+            const nameB = allNames[j];
+            const docsA = personDocMap.get(nameA) || [];
+            const docsB = personDocMap.get(nameB) || [];
+            const commonDocs = docsA.filter(d => docsB.includes(d));
+            if (commonDocs.length > 0) {
+                const relKey = `${nameA}--${nameB}`;
+                if (!addedRels.has(relKey)) {
+                    addedRels.add(relKey);
+                    const personA = whoList.find(w => w.name === nameA);
+                    const personB = whoList.find(w => w.name === nameB);
+                    const relLabel = inferRelationship(personA, personB, commonDocs);
+                    knownRelationships.push({
+                        id: `rel-${knownRelationships.length + 1}`,
+                        source: nameA,
+                        target: nameB,
+                        relationship: relLabel,
+                        citation: { documentTitle: commonDocs[0], confidenceScore: 0.94 },
+                    });
+                }
+            }
+        }
     }
 
     // Synthesize real open gaps linking to the Lead Board
-    const openGaps: FactSheetData["openGaps"] = [
-        {
+    const openGaps: FactSheetData["openGaps"] = [];
+    if (whoList.length > 2) {
+        openGaps.push({
             id: "gap-1",
-            title: "Offshore Beneficiary Entity Audit",
+            title: "Unverified Offshore/External Connections",
             linkedLeadId: "LEAD-01",
             severity: "high",
-            notes: "Beneficiary ownership of offshore recipient entity 'Al-Noor Export FZE' (RTGS INR 4,89,000).",
-        },
-        {
+            notes: "External entity or offshore beneficiary linked to case transactions requires further audit.",
+        });
+        openGaps.push({
             id: "gap-2",
-            title: "Burner SIM Procurement Verification",
+            title: "Communication Device Forensics Pending",
             linkedLeadId: "LEAD-02",
             severity: "medium",
-            notes: "Procurement chain and forged KYC documentation for 12 seized unactivated burner SIM cards.",
-        },
-    ];
+            notes: "Seized communication devices and SIM card procurement chains require full digital forensic extraction.",
+        });
+    }
+    if (whoList.length > 0) {
+        openGaps.push({
+            id: "gap-3",
+            title: "Identity Verification for All Accused",
+            linkedLeadId: "LEAD-03",
+            severity: "medium",
+            notes: "Biometric de-duplication and alias resolution pending for accused persons with multiple identities.",
+        });
+    }
+
     return {
         caseId,
-        firNumber: detectedFirNumber || "FIR 108/2026: Kashmere Gate Syndicate",
+        firNumber: detectedFirNumber || caseTitle,
         track,
         triageReason: triageReason || (whoList.length > 2 ? "Multi-state organized syndicate network detected." : "Evidence ingested."),
         who: whoList,
@@ -454,12 +481,49 @@ export function synthesizeFactSheetFromDocuments(
     };
 }
 
+/** Infer a human-readable relationship label from person roles and shared documents */
+function inferRelationship(
+    personA: FactSheetData["who"][0] | undefined,
+    personB: FactSheetData["who"][0] | undefined,
+    commonDocs: string[]
+): string {
+    const roleA = (personA?.role || "").toLowerCase();
+    const roleB = (personB?.role || "").toLowerCase();
+    const docTitles = commonDocs.join(" ").toLowerCase();
+
+    if (docTitles.includes("wiretap") || docTitles.includes("intercept") || docTitles.includes("audio"))
+        return "Intercepted Communication Channel";
+    if (docTitles.includes("cctv") || docTitles.includes("anpr"))
+        return "Co-located on CCTV/ANPR Capture";
+    if (docTitles.includes("seizure") || docTitles.includes("panchnama"))
+        return "Co-apprehended at Seizure Location";
+    if (docTitles.includes("bank") || docTitles.includes("structuring") || docTitles.includes("transaction"))
+        return "Linked via Financial Transactions";
+    if (docTitles.includes("server") || docTitles.includes("log") || docTitles.includes("cyber"))
+        return "Linked via Digital Forensic Evidence";
+    if (docTitles.includes("dark web") || docTitles.includes("forum"))
+        return "Dark Web Marketplace Connection";
+    if (docTitles.includes("crypto") || docTitles.includes("tornado") || docTitles.includes("blockchain"))
+        return "Cryptocurrency Transaction Chain";
+    if (roleA.includes("courier") || roleB.includes("courier"))
+        return "Courier & Handler Syndicate Link";
+    if (roleA.includes("kingpin") || roleB.includes("kingpin") || roleA.includes("operator") || roleB.includes("operator"))
+        return "Syndicate Command Chain";
+    if (roleA.includes("insider") || roleB.includes("insider"))
+        return "Insider Threat Facilitation";
+    if (roleA.includes("mule") || roleB.includes("mule"))
+        return "Money Mule Laundering Chain";
+
+    return `Co-referenced in ${commonDocs.length} document(s)`;
+}
+
 
 import type { GraphData, GraphNode, GraphEdge } from "../services/analytics";
 
 /**
  * Synthesizes a densely connected, visually impressive heterogeneous Knowledge Graph
  * linking suspects, seized vehicles, structured bank accounts, and evidence documents.
+ * DYNAMIC: works for ANY case, not just the Kashmere Gate syndicate.
  */
 export function synthesizeGraphFromFactSheet(
     factSheet: FactSheetData,
@@ -476,48 +540,145 @@ export function synthesizeGraphFromFactSheet(
         }
     };
 
-    // 1. Accused and persons from fact sheet
+    const edgeIds = new Set<string>();
+    const addEdge = (e: GraphEdge) => {
+        if (!edgeIds.has(e.id)) {
+            edgeIds.add(e.id);
+            edges.push(e);
+        }
+    };
+
+    const ROLE_COLORS: Record<string, string> = {
+        person: "#8b5cf6",
+        vehicle: "#38bdf8",
+        account: "#ec4899",
+        document: "#64748b",
+        server: "#a855f7",
+        wallet: "#f97316",
+        entity: "#10b981",
+    };
+
+    // 1. All persons from fact sheet — with dynamic risk scoring
     factSheet.who.forEach((p) => {
-        const isAccused = p.role === "Accused";
-        const isComplainant = p.role === "Complainant";
+        const role = (p.role || "").toLowerCase();
+        const isComplainant = role.includes("complainant") || role.includes("victim") || role.includes("informant");
+        const isHighRisk = role.includes("kingpin") || role.includes("operator") || role.includes("coordinator") || role.includes("admin") || role.includes("attacker");
+        const isMedRisk = role.includes("courier") || role.includes("enforcer") || role.includes("mule") || role.includes("broker") || role.includes("insider");
+
         addNode({
             id: `person-${p.id}`,
             label: p.name,
             type: "person",
             badge: p.alias ? `${p.role}: ${p.alias}` : p.role,
-            risk_score: isAccused ? 0.92 : isComplainant ? 0.15 : 0.45,
+            risk_score: isComplainant ? 0.12 : isHighRisk ? 0.95 : isMedRisk ? 0.78 : 0.55,
             merge_reason: p.citation?.rawSnippet || "Identified across ingested evidence channels",
         });
     });
 
-    // 2. Add Key Physical / Financial Entities if evidence suggests them
-    const allEvidenceText = documents.map(d => (d.extracted_information as any)?.transcribed_text || d.title).join(" ") + 
-        " " + factSheet.who.map(w => w.name).join(" ") + " " + (factSheet.firNumber || "");
+    // 2. Dynamically detect vehicles, bank accounts, wallets, servers from evidence
+    const allEvidenceText = documents.map(d => {
+        const ext = d.extracted_information as any;
+        return [
+            ext?.transcribed_text || "",
+            ext?.narrative || "",
+            d.title || "",
+            d.description || "",
+        ].join(" ");
+    }).join(" ") + " " + factSheet.who.map(w => w.name).join(" ") + " " + (factSheet.firNumber || "");
 
-    const hasCreta = allEvidenceText.includes("DL-01-AB-1234") || allEvidenceText.includes("Creta") || factSheet.who.some(p => p.name.includes("Vikram"));
-    const hasAxisBank = allEvidenceText.includes("4901") || allEvidenceText.includes("Axis") || factSheet.who.some(p => p.name.includes("Rajesh"));
+    // Detect vehicles from extracted_information
+    const detectedVehicles = new Set<string>();
+    documents.forEach(d => {
+        const ext = d.extracted_information as any;
+        if (Array.isArray(ext?.vehicles)) {
+            ext.vehicles.forEach((v: any) => {
+                if (v.plate) detectedVehicles.add(v.plate);
+            });
+        }
+    });
+    // Also regex from text
+    const vehRegex = /([A-Z]{2}[\-\s]?[0-9]{1,2}[\-\s]?[A-Z]{1,3}[\-\s]?[0-9]{2,4})/g;
+    let vehMatch;
+    while ((vehMatch = vehRegex.exec(allEvidenceText)) !== null) {
+        const plate = vehMatch[1].replace(/\s+/g, "-");
+        if (plate.length >= 8) detectedVehicles.add(plate);
+    }
 
-    if (hasCreta) {
+    detectedVehicles.forEach(plate => {
+        const makeText = allEvidenceText.includes("Creta") ? "Hyundai Creta" :
+                         allEvidenceText.includes("Tata Ace") ? "Tata Ace" : "Vehicle";
         addNode({
-            id: "veh-DL-01-AB-1234",
-            label: "Hyundai Creta (DL-01-AB-1234)",
+            id: `veh-${plate}`,
+            label: `${makeText} (${plate})`,
             type: "vehicle",
             badge: "SEIZED VEHICLE",
             risk_score: 0.78,
-            merge_reason: "ANPR Toll Gate match & Mori Gate physical recovery",
+            merge_reason: "Detected from ANPR / seizure evidence",
         });
-    }
+    });
 
-    if (hasAxisBank) {
+    // Detect bank accounts
+    const detectedAccounts = new Map<string, { bank: string; holder: string }>();
+    documents.forEach(d => {
+        const ext = d.extracted_information as any;
+        if (ext?.account_number && ext?.bank_name) {
+            detectedAccounts.set(ext.account_number, {
+                bank: ext.bank_name,
+                holder: ext.account_holder || "Unknown",
+            });
+        }
+    });
+
+    detectedAccounts.forEach((info, acctNum) => {
         addNode({
-            id: "acct-axis-4901",
-            label: "Axis Bank A/c 4901238910",
+            id: `acct-${acctNum}`,
+            label: `${info.bank} A/c ${acctNum}`,
             type: "account",
-            badge: "STRUCTURING A/C",
-            risk_score: 0.88,
-            merge_reason: "12 structured sub-50k cash deposits & offshore RTGS transfer",
+            badge: "FINANCIAL ENTITY",
+            risk_score: 0.85,
+            merge_reason: `Account holder: ${info.holder}`,
         });
+    });
+
+    // Detect crypto wallets and C2 servers (for cybercrime cases)
+    const walletRegex = /(?:wallet|bc1|0x[A-Fa-f0-9]{3,})[^\s,)]*(?:\.\.\.[^\s,)]+)?/gi;
+    const wallets = new Set<string>();
+    let walletMatch;
+    while ((walletMatch = walletRegex.exec(allEvidenceText)) !== null) {
+        const w = walletMatch[0].slice(0, 30);
+        if (w.length > 5) wallets.add(w);
     }
+    wallets.forEach(w => {
+        addNode({
+            id: `wallet-${w.slice(0, 10)}`,
+            label: w.length > 20 ? `${w.slice(0, 18)}...` : w,
+            type: "entity",
+            badge: "CRYPTO WALLET",
+            risk_score: 0.82,
+            merge_reason: "Cryptocurrency wallet detected in blockchain forensic evidence",
+        });
+    });
+
+    // Detect C2 servers / IPs
+    const ipRegex = /(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/g;
+    const ips = new Set<string>();
+    let ipMatch;
+    while ((ipMatch = ipRegex.exec(allEvidenceText)) !== null) {
+        const ip = ipMatch[1];
+        if (!ip.startsWith("28.") && !ip.startsWith("77.") && !ip.startsWith("0.") && !ip.startsWith("127.")) {
+            ips.add(ip);
+        }
+    }
+    ips.forEach(ip => {
+        addNode({
+            id: `server-${ip}`,
+            label: `C2 Server ${ip}`,
+            type: "entity",
+            badge: "C2 / MALICIOUS IP",
+            risk_score: 0.90,
+            merge_reason: "Command & Control server detected in forensic log analysis",
+        });
+    });
 
     // 3. Document exhibits
     documents.forEach((d) => {
@@ -531,155 +692,203 @@ export function synthesizeGraphFromFactSheet(
         });
     });
 
-    // 4. Edges between Persons based on knownRelationships
+    // 4. Edges from knownRelationships
     factSheet.knownRelationships.forEach((rel, idx) => {
         const srcPerson = factSheet.who.find(p => p.name.includes(rel.source) || rel.source.includes(p.name));
         const tgtPerson = factSheet.who.find(p => p.name.includes(rel.target) || rel.target.includes(p.name));
 
         if (srcPerson && tgtPerson) {
-            edges.push({
+            addEdge({
                 id: `edge-rel-${idx}`,
                 source: `person-${srcPerson.id}`,
                 target: `person-${tgtPerson.id}`,
                 label: rel.relationship,
-                color: rel.relationship.includes("Hawala") ? "#f43f5e" : "#f59e0b",
+                color: rel.relationship.includes("Hawala") || rel.relationship.includes("Syndicate") ? "#f43f5e" :
+                       rel.relationship.includes("Financial") || rel.relationship.includes("Laundering") ? "#ec4899" :
+                       rel.relationship.includes("Digital") || rel.relationship.includes("Cyber") ? "#a855f7" : "#f59e0b",
                 style: "solid",
                 probability: rel.citation?.confidenceScore ?? 0.95,
             });
         }
     });
 
-    // 5. Connect Person to Vehicle
-    const vikram = factSheet.who.find(p => p.name.includes("Vikram"));
-    if (vikram && hasCreta) {
-        edges.push({
-            id: "edge-vikram-creta",
-            source: `person-${vikram.id}`,
-            target: "veh-DL-01-AB-1234",
-            label: "Driver / Transport",
-            color: "#38bdf8",
-            style: "solid",
-            probability: 0.94,
-        });
-    }
-
-    // 6. Connect Person to Bank Account
-    const rajesh = factSheet.who.find(p => p.name.includes("Rajesh"));
-    if (rajesh && hasAxisBank) {
-        edges.push({
-            id: "edge-rajesh-bank",
-            source: `person-${rajesh.id}`,
-            target: "acct-axis-4901",
-            label: "Account Beneficiary",
-            color: "#ec4899",
-            style: "solid",
-            probability: 0.98,
-        });
-    }
-
-    if (vikram && hasAxisBank) {
-        edges.push({
-            id: "edge-vikram-bank",
-            source: `person-${vikram.id}`,
-            target: "acct-axis-4901",
-            label: "Cash Depositor (Smurfing)",
-            color: "#ec4899",
-            style: "dashed",
-            probability: 0.91,
-        });
-    }
-
-    // 7. Targeted document citations
-    documents.forEach((d) => {
-        const title = d.title.toLowerCase();
-        if (title.includes("fir")) {
-            factSheet.who.filter(p => p.role === "Accused").forEach(p => {
-                edges.push({
-                    id: `edge-doc-${d.id}-${p.id}`,
-                    source: `doc-${d.id}`,
-                    target: `person-${p.id}`,
-                    label: "Charges BNS §111/316",
-                    color: "#64748b",
-                    style: "dotted",
-                });
+    // 5. Connect persons to vehicles they're associated with
+    documents.forEach(d => {
+        const ext = d.extracted_information as any;
+        if (Array.isArray(ext?.vehicles) && Array.isArray(ext?.accused)) {
+            ext.vehicles.forEach((v: any) => {
+                if (!v.plate) return;
+                const driverAccused = ext.accused.find((a: any) =>
+                    (a.role || "").toLowerCase().includes("driver") ||
+                    (a.role || "").toLowerCase().includes("courier") ||
+                    (a.role || "").toLowerCase().includes("removal")
+                ) || ext.accused[0];
+                if (driverAccused) {
+                    const person = factSheet.who.find(p => p.name === driverAccused.name);
+                    if (person) {
+                        addEdge({
+                            id: `edge-veh-${v.plate}-${person.id}`,
+                            source: `person-${person.id}`,
+                            target: `veh-${v.plate}`,
+                            label: driverAccused.role?.includes("Driver") ? "Driver / Transport" : "Associated Vehicle",
+                            color: ROLE_COLORS.vehicle,
+                            style: "solid",
+                            probability: 0.94,
+                        });
+                    }
+                }
             });
-        } else if (title.includes("seizure") || title.includes("panchnama")) {
-            if (hasCreta) {
-                edges.push({
-                    id: `edge-doc-${d.id}-creta`,
-                    source: `doc-${d.id}`,
-                    target: "veh-DL-01-AB-1234",
-                    label: "Panchnama Seizure",
-                    color: "#64748b",
-                    style: "dotted",
+        }
+    });
+
+    // 6. Connect persons to bank accounts
+    detectedAccounts.forEach((info, acctNum) => {
+        // Find the accused who is the account holder
+        const holder = factSheet.who.find(p => info.holder.includes(p.name.split(" ")[0]));
+        if (holder) {
+            addEdge({
+                id: `edge-acct-holder-${acctNum}-${holder.id}`,
+                source: `person-${holder.id}`,
+                target: `acct-${acctNum}`,
+                label: "Account Beneficiary",
+                color: ROLE_COLORS.account,
+                style: "solid",
+                probability: 0.98,
+            });
+        }
+        // Find depositors (anyone with "depositor", "smurfing", "courier" role)
+        documents.forEach(d => {
+            const ext = d.extracted_information as any;
+            if (ext?.account_number === acctNum && Array.isArray(ext?.accused)) {
+                ext.accused.forEach((acc: any) => {
+                    if (acc.name === info.holder) return; // skip holder, already linked
+                    const person = factSheet.who.find(p => p.name === acc.name);
+                    if (person) {
+                        addEdge({
+                            id: `edge-acct-dep-${acctNum}-${person.id}`,
+                            source: `person-${person.id}`,
+                            target: `acct-${acctNum}`,
+                            label: (acc.role || "").includes("Depositor") ? "Cash Depositor (Smurfing)" : "Transaction Link",
+                            color: ROLE_COLORS.account,
+                            style: "dashed",
+                            probability: 0.91,
+                        });
+                    }
                 });
             }
-            if (vikram) {
-                edges.push({
-                    id: `edge-doc-${d.id}-vikram`,
-                    source: `doc-${d.id}`,
-                    target: `person-${vikram.id}`,
-                    label: "Custody Intercept",
-                    color: "#64748b",
-                    style: "dotted",
+        });
+    });
+
+    // 7. Connect persons to C2 servers (cybercrime)
+    ips.forEach(ip => {
+        documents.forEach(d => {
+            const ext = d.extracted_information as any;
+            const text = (ext?.transcribed_text || ext?.narrative || "");
+            if (text.includes(ip) && Array.isArray(ext?.accused)) {
+                ext.accused.forEach((acc: any) => {
+                    const person = factSheet.who.find(p => p.name === acc.name);
+                    if (person) {
+                        const role = (acc.role || "").toLowerCase();
+                        addEdge({
+                            id: `edge-server-${ip}-${person.id}`,
+                            source: `person-${person.id}`,
+                            target: `server-${ip}`,
+                            label: role.includes("attacker") || role.includes("operator") ? "C2 Operator" :
+                                   role.includes("insider") ? "VPN Credential Leak" : "Server Connection",
+                            color: ROLE_COLORS.server,
+                            style: role.includes("insider") ? "dashed" : "solid",
+                            probability: 0.92,
+                        });
+                    }
                 });
             }
-        } else if (title.includes("cctv") || title.includes("anpr")) {
-            if (hasCreta) {
-                edges.push({
-                    id: `edge-doc-${d.id}-creta`,
-                    source: `doc-${d.id}`,
-                    target: "veh-DL-01-AB-1234",
-                    label: "Toll Gate Capture 11:45",
-                    color: "#64748b",
-                    style: "dotted",
+        });
+    });
+
+    // 8. Connect persons to crypto wallets
+    wallets.forEach(w => {
+        const wSlice = w.slice(0, 10);
+        documents.forEach(d => {
+            const ext = d.extracted_information as any;
+            if (Array.isArray(ext?.accused) && (ext?.narrative || ext?.transcribed_text || "").includes(w.slice(0, 8))) {
+                ext.accused.forEach((acc: any) => {
+                    const person = factSheet.who.find(p => p.name === acc.name);
+                    if (person) {
+                        addEdge({
+                            id: `edge-wallet-${wSlice}-${person.id}`,
+                            source: `person-${person.id}`,
+                            target: `wallet-${wSlice}`,
+                            label: (acc.role || "").includes("Mule") ? "Crypto Conversion Operator" : "Wallet Operator",
+                            color: ROLE_COLORS.wallet,
+                            style: "solid",
+                            probability: 0.88,
+                        });
+                    }
                 });
             }
-        } else if (title.includes("wiretap") || title.includes("intercept") || title.includes("audio")) {
-            if (rajesh) {
-                edges.push({
-                    id: `edge-doc-${d.id}-rajesh`,
-                    source: `doc-${d.id}`,
-                    target: `person-${rajesh.id}`,
-                    label: "Caller Intercept",
-                    color: "#64748b",
-                    style: "dotted",
-                });
-            }
-            const tariq = factSheet.who.find(p => p.name.includes("Tariq"));
-            if (tariq) {
-                edges.push({
-                    id: `edge-doc-${d.id}-tariq`,
-                    source: `doc-${d.id}`,
-                    target: `person-${tariq.id}`,
-                    label: "Receiver Intercept",
-                    color: "#64748b",
-                    style: "dotted",
-                });
-            }
-        } else if (title.includes("bank") || title.includes("csv") || title.includes("axis")) {
-            if (hasAxisBank) {
-                edges.push({
-                    id: `edge-doc-${d.id}-bank`,
-                    source: `doc-${d.id}`,
-                    target: "acct-axis-4901",
-                    label: "Bank Ledger Transactions",
-                    color: "#64748b",
-                    style: "dotted",
-                });
-            }
-        } else if (title.includes("bio") || title.includes("aadhaar")) {
-            const imran = factSheet.who.find(p => p.name.includes("Imran"));
-            if (imran) {
-                edges.push({
-                    id: `edge-doc-${d.id}-imran`,
-                    source: `doc-${d.id}`,
-                    target: `person-${imran.id}`,
-                    label: "Biometric Identity Mismatch",
-                    color: "#64748b",
-                    style: "dotted",
-                });
-            }
+        });
+    });
+
+    // 9. Document-to-entity citation edges
+    documents.forEach((d) => {
+        const ext = d.extracted_information as any;
+        const title = d.title.toLowerCase();
+
+        // Connect document to accused mentioned in it
+        if (Array.isArray(ext?.accused)) {
+            ext.accused.forEach((acc: any, aIdx: number) => {
+                const person = factSheet.who.find(p => p.name === acc.name);
+                if (person) {
+                    const docLabel = title.includes("fir") ? "Named in FIR" :
+                                     title.includes("seizure") || title.includes("panchnama") ? "Seizure Evidence" :
+                                     title.includes("cctv") || title.includes("anpr") ? "Surveillance Capture" :
+                                     title.includes("wiretap") || title.includes("intercept") ? "Intercepted Comms" :
+                                     title.includes("bank") || title.includes("transaction") || title.includes("structuring") ? "Financial Records" :
+                                     title.includes("bio") || title.includes("forensic") ? "Biometric Match" :
+                                     title.includes("server") || title.includes("log") ? "Digital Forensic Log" :
+                                     title.includes("crypto") || title.includes("tornado") || title.includes("blockchain") ? "Blockchain Trace" :
+                                     title.includes("dark web") || title.includes("forum") ? "OSINT Intelligence" :
+                                     title.includes("email") ? "Email Communication" :
+                                     title.includes("contract") || title.includes("agreement") ? "Legal Agreement" :
+                                     "Evidence Citation";
+                    addEdge({
+                        id: `edge-doc-${d.id}-${person.id}-${aIdx}`,
+                        source: `doc-${d.id}`,
+                        target: `person-${person.id}`,
+                        label: docLabel,
+                        color: "#64748b",
+                        style: "dotted",
+                    });
+                }
+            });
+        }
+
+        // Connect document to vehicles mentioned in it
+        if (Array.isArray(ext?.vehicles)) {
+            ext.vehicles.forEach((v: any) => {
+                if (v.plate && nodeIds.has(`veh-${v.plate}`)) {
+                    addEdge({
+                        id: `edge-doc-${d.id}-veh-${v.plate}`,
+                        source: `doc-${d.id}`,
+                        target: `veh-${v.plate}`,
+                        label: title.includes("cctv") ? "ANPR Capture" : "Vehicle Citation",
+                        color: "#64748b",
+                        style: "dotted",
+                    });
+                }
+            });
+        }
+
+        // Connect document to bank account
+        if (ext?.account_number && nodeIds.has(`acct-${ext.account_number}`)) {
+            addEdge({
+                id: `edge-doc-${d.id}-acct-${ext.account_number}`,
+                source: `doc-${d.id}`,
+                target: `acct-${ext.account_number}`,
+                label: "Financial Evidence",
+                color: "#64748b",
+                style: "dotted",
+            });
         }
     });
 
