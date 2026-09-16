@@ -28,7 +28,7 @@ export default function FactSheet({
         firNumber: "No Case Record Selected",
         track: 2,
         triageReason: "Awaiting document ingestion.",
-                who: [],
+        who: [],
         what: [],
         when: [],
         where: [],
@@ -36,7 +36,21 @@ export default function FactSheet({
         knownRelationships: [],
         openGaps: [],
     };
-    const activeData = data || (USE_MOCK_API ? mockFactSheet : emptyFactSheet);
+    const rawData = data || (USE_MOCK_API ? mockFactSheet : emptyFactSheet);
+    const activeData: FactSheetData = {
+        caseId: rawData?.caseId || caseId || "case-1",
+        firNumber: rawData?.firNumber || "No Case Record Selected",
+        track: (rawData?.track ?? 2) as 1 | 2,
+        triageReason: rawData?.triageReason || "Awaiting document ingestion.",
+        diffSummary: rawData?.diffSummary,
+        who: Array.isArray(rawData?.who) ? rawData.who : [],
+        what: Array.isArray(rawData?.what) ? rawData.what : [],
+        when: Array.isArray(rawData?.when) ? rawData.when : [],
+        where: Array.isArray(rawData?.where) ? rawData.where : [],
+        evidence: Array.isArray(rawData?.evidence) ? rawData.evidence : [],
+        knownRelationships: Array.isArray(rawData?.knownRelationships) ? rawData.knownRelationships : [],
+        openGaps: Array.isArray(rawData?.openGaps) ? rawData.openGaps : [],
+    };
     // Collapsible states for all 7 sections
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
         who: false,
@@ -211,7 +225,7 @@ export default function FactSheet({
                                             </div>
 
                                             <div className="flex items-center justify-between border-t border-surface-200/60 pt-2 text-[10px] text-surface-500">
-                                                <span className="font-mono">{person.citation.documentTitle}</span>
+                                                <span className="font-mono">{person.citation?.documentTitle || "Case Evidence"}</span>
                                                 <SourceCitationPopover source={person.citation} />
                                             </div>
                                         </div>

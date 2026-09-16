@@ -4,7 +4,7 @@ import Icon from "./Icon";
 import ConfidenceBadge from "./ConfidenceBadge";
 
 export interface CitationSource {
-    documentTitle: string;
+    documentTitle?: string;
     documentType?: "image" | "text" | "voice" | "video" | "cdr" | "cctv";
     pageOrOffset?: string;
     extractedAt?: string;
@@ -14,7 +14,7 @@ export interface CitationSource {
 }
 
 interface SourceCitationPopoverProps {
-    source: CitationSource;
+    source?: CitationSource;
     children?: React.ReactNode;
     className?: string;
 }
@@ -25,6 +25,10 @@ export default function SourceCitationPopover({
     className = "",
 }: SourceCitationPopoverProps) {
     const [isOpen, setIsOpen] = useState(false);
+
+    if (!source || !source.documentTitle) {
+        return children ? <>{children}</> : null;
+    }
 
     return (
         <span className={`relative inline-block ${className}`}>
@@ -47,7 +51,7 @@ export default function SourceCitationPopover({
                         setIsOpen(!isOpen);
                     }}
                     title="View Extraction Citation"
-                    className="inline-flex items-center gap-1 rounded bg-surface-200/80 px-1.5 py-0.5 text-[11px] font-mono text-surface-400 hover:bg-surface-300 hover:text-insignia-400 transition-colors ml-1.5"
+                    className="inline-flex items-center gap-1 rounded bg-surface-200/80 px-1.5 py-0.5 text-[11px] font-mono text-surface-400 hover:bg-surface-300 hover:text-insignia-400 transition-colors ml-1.5 cursor-pointer"
                 >
                     <Icon name="chain-link" size={11} />
                     <span>src</span>
@@ -77,8 +81,9 @@ export default function SourceCitationPopover({
                                 </h4>
                             </div>
                             <button
+                                type="button"
                                 onClick={() => setIsOpen(false)}
-                                className="text-surface-500 hover:text-surface-900 text-xs p-1"
+                                className="text-surface-500 hover:text-surface-900 text-xs p-1 cursor-pointer"
                             >
                                 <Icon name="cross" size={12} />
                             </button>

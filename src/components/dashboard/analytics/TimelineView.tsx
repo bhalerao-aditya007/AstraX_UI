@@ -4,7 +4,6 @@ import { mockTimeline } from "../../../data/mockCaseData";
 import ConfidenceBadge from "../../ui/ConfidenceBadge";
 import SourceCitationPopover from "../../ui/SourceCitationPopover";
 import Icon from "../../ui/Icon";
-
 import { USE_MOCK_API } from "../../../config";
 
 interface TimelineViewProps {
@@ -55,68 +54,80 @@ export default function TimelineView({ onSelect, events }: TimelineViewProps) {
             </div>
 
             {/* Vertical Timeline Stack */}
-            <div className="relative border-l-2 border-surface-300 ml-4 pl-8 space-y-6">
-                {sorted.map((event) => (
-                    <div key={event.id} className="relative group">
-                        {/* Timeline Node Dot */}
-                        <div className="absolute -left-[41px] top-2 flex h-5 w-5 items-center justify-center rounded-full bg-surface-0 border-4 border-insignia-500 shadow-[0_0_8px_rgba(201,162,39,0.4)] z-10" />
+            {sorted.length === 0 ? (
+                <div className="rounded-xl border border-surface-300 bg-surface-100 p-8 text-center flex flex-col items-center justify-center">
+                    <div className="h-10 w-10 rounded-full bg-surface-200 flex items-center justify-center text-surface-400 mb-2">
+                        <Icon name="clock" size={20} />
+                    </div>
+                    <h4 className="text-sm font-bold text-surface-800">No Chronological Events Recorded</h4>
+                    <p className="mt-1 text-xs text-surface-500 max-w-sm">
+                        Timestamps from ingested FIR occurrences, call data records, or transaction sequences will be assembled here chronologically.
+                    </p>
+                </div>
+            ) : (
+                <div className="relative border-l-2 border-surface-300 ml-4 pl-8 space-y-6">
+                    {sorted.map((event) => (
+                        <div key={event.id} className="relative group">
+                            {/* Timeline Node Dot */}
+                            <div className="absolute -left-[41px] top-2 flex h-5 w-5 items-center justify-center rounded-full bg-surface-0 border-4 border-insignia-500 shadow-[0_0_8px_rgba(201,162,39,0.4)] z-10" />
 
-                        {/* Event Card */}
-                        <div 
-                            className="bg-surface-100 rounded-xl border border-surface-300 p-4 transition-all hover:border-insignia-500/50 hover:bg-surface-100/95 cursor-pointer shadow-sm flex flex-col gap-2.5"
-                            onClick={() => onSelect && onSelect({
-                                id: event.id,
-                                label: event.description,
-                                type: event.type,
-                                confidence: event.confidence,
-                                details: {
-                                    date: event.date,
-                                    time: event.time,
-                                    entity: event.entity,
-                                    location: event.location,
-                                    ...(event as any).details
-                                },
-                                citation: (event as any).citation,
-                                merge_reason: `Timeline event logged at ${event.date} ${event.time} under ${event.type}`
-                            })}
-                        >
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                <div className="flex items-center gap-2.5">
-                                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-insignia-400 bg-insignia-500/15 border border-insignia-500/30 px-2 py-0.5 rounded">
-                                        {event.type}
-                                    </span>
-                                    <span className="text-sm font-bold text-surface-900">
-                                        {event.entity}
-                                    </span>
-                                </div>
-                                
-                                <div className="font-mono text-xs text-right">
-                                    <span className="font-bold text-surface-700">{event.date}</span>
-                                    <span className="text-insignia-400 ml-1.5 font-bold">[{event.time} IST]</span>
-                                </div>
-                            </div>
-
-                            <p className="text-surface-600 text-xs leading-relaxed font-sans">
-                                {event.description}
-                            </p>
-
-                            <div className="flex items-center justify-between border-t border-surface-200/80 pt-2 text-xs">
-                                <div className="flex items-center gap-4 text-surface-500 font-mono text-[11px]">
-                                    <span className="flex items-center gap-1">
-                                        <Icon name="map-pin" size={12} className="text-surface-400" />
-                                        {event.location}
-                                    </span>
-                                    <ConfidenceBadge score={event.confidence} size="sm" />
+                            {/* Event Card */}
+                            <div 
+                                className="bg-surface-100 rounded-xl border border-surface-300 p-4 transition-all hover:border-insignia-500/50 hover:bg-surface-100/95 cursor-pointer shadow-sm flex flex-col gap-2.5"
+                                onClick={() => onSelect && onSelect({
+                                    id: event.id,
+                                    label: event.description,
+                                    type: event.type,
+                                    confidence: event.confidence,
+                                    details: {
+                                        date: event.date,
+                                        time: event.time,
+                                        entity: event.entity,
+                                        location: event.location,
+                                        ...(event as any).details
+                                    },
+                                    citation: (event as any).citation,
+                                    merge_reason: `Timeline event logged at ${event.date} ${event.time} under ${event.type}`
+                                })}
+                            >
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2.5">
+                                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-insignia-400 bg-insignia-500/15 border border-insignia-500/30 px-2 py-0.5 rounded">
+                                            {event.type}
+                                        </span>
+                                        <span className="text-sm font-bold text-surface-900">
+                                            {event.entity}
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="font-mono text-xs text-right">
+                                        <span className="font-bold text-surface-700">{event.date}</span>
+                                        <span className="text-insignia-400 ml-1.5 font-bold">[{event.time} IST]</span>
+                                    </div>
                                 </div>
 
-                                {(event as any).citation && (
-                                    <SourceCitationPopover source={(event as any).citation} />
-                                )}
+                                <p className="text-surface-600 text-xs leading-relaxed font-sans">
+                                    {event.description}
+                                </p>
+
+                                <div className="flex items-center justify-between border-t border-surface-200/80 pt-2 text-xs">
+                                    <div className="flex items-center gap-4 text-surface-500 font-mono text-[11px]">
+                                        <span className="flex items-center gap-1">
+                                            <Icon name="map-pin" size={12} className="text-surface-400" />
+                                            {event.location}
+                                        </span>
+                                        <ConfidenceBadge score={event.confidence} size="sm" />
+                                    </div>
+
+                                    {(event as any).citation && (
+                                        <SourceCitationPopover source={(event as any).citation} />
+                                    )}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
