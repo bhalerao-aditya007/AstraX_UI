@@ -69,6 +69,7 @@ export interface GraphEdge {
     probability?: number;
     valid_from?: string;
     merge_reason?: string;
+    weight?: number;
 }
 
 export interface GraphData {

@@ -214,7 +214,7 @@ export default function DeltaIngestionModal({
                 {/* Body / Channels Stack */}
                 <div className="flex-1 overflow-y-auto p-5 space-y-4">
                     <div className="text-xs text-surface-600 bg-surface-0 p-3 rounded-lg border border-surface-200 font-mono">
-                        Stage 13.1 Delta Pipeline: Ingested evidence will generate an additive diff, update the Fact-Sheet, and produce a versioned Crime Reconstruction Theory.
+                        Delta Ingestion Pipeline: Ingested evidence will generate an additive diff, update the Fact-Sheet, and produce a versioned Crime Reconstruction Theory.
                     </div>
 
                     {isProcessing ? (

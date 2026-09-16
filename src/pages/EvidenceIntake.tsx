@@ -333,7 +333,7 @@ export default function EvidenceIntake() {
 
         setStreamedLogs((prev) => [
             ...prev,
-            "[Complete] Forensic pipeline execution finished. Redirecting to Stage 5 Fact-Sheet...",
+            "[Complete] Forensic pipeline execution finished. Redirecting to Case Fact-Sheet...",
         ]);
 
         await new Promise((r) => setTimeout(r, 1200));
@@ -354,7 +354,7 @@ export default function EvidenceIntake() {
                     <div className="max-w-2xl">
                         <div className="flex items-center gap-2 text-xs font-mono font-bold text-insignia-400 uppercase tracking-widest mb-1.5">
                             <Icon name="shield" size={14} />
-                            <span>Stage 1 & 3: Multi-Modality Intake</span>
+                            <span>Multi-Modality Evidence Intake</span>
                         </div>
                         <h1 className="text-2xl sm:text-3xl font-extrabold text-surface-900 tracking-tight">
                             Evidence Ingestion Matrix

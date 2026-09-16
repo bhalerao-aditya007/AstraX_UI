@@ -202,6 +202,24 @@ export default function NetworkGraph({
             ctx.fillStyle = isHypothesis ? "#8b5cf6" : (link.color || "#64748b");
             ctx.fill();
 
+            // Animated flowing energy particle along edge
+            const timeNow = Date.now() / 1000;
+            const linkSpeed = 0.45 + (link.weight ? link.weight * 0.15 : 0.2);
+            const sName = typeof s.id === "string" ? s.id : "src";
+            const eName = typeof e.id === "string" ? e.id : "tgt";
+            const phaseShift = (sName.length * 3 + eName.length * 7) * 0.11;
+            const tProg = ((timeNow * linkSpeed + phaseShift) % 1);
+            const px = sourceX + (targetX - sourceX) * tProg;
+            const py = sourceY + (targetY - sourceY) * tProg;
+
+            ctx.beginPath();
+            ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+            ctx.fillStyle = isHypothesis ? "#c084fc" : (link.color || "#38bdf8");
+            ctx.shadowColor = ctx.fillStyle;
+            ctx.shadowBlur = 8;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
             // Label
             if (link.label) {
                 const mx = (s.x + e.x) / 2;
@@ -240,10 +258,21 @@ export default function NetworkGraph({
             ctx.save();
             ctx.translate(node.x, node.y);
 
-            // Glow ring for hovered or phantom nodes
-            if (isHovered || isPhantom) {
+            // Animated pulsing halo ring for hovered, high risk, or phantom nodes
+            const timeNow = Date.now() / 1000;
+            if (node.risk_score && node.risk_score > 0.8) {
+                const pulse = Math.sin(timeNow * 3.5 + (node.id.length * 0.7)) * 3;
                 ctx.beginPath();
-                ctx.arc(0, 0, NODE_RADIUS + 7, 0, Math.PI * 2);
+                ctx.arc(0, 0, NODE_RADIUS + 5 + pulse, 0, Math.PI * 2);
+                ctx.strokeStyle = "rgba(239, 68, 68, 0.45)";
+                ctx.lineWidth = 1.75;
+                ctx.stroke();
+            }
+
+            if (isHovered || isPhantom) {
+                const pulse = isPhantom ? Math.sin(timeNow * 2.8 + (node.id.length * 0.5)) * 2.5 : 0;
+                ctx.beginPath();
+                ctx.arc(0, 0, NODE_RADIUS + 7 + pulse, 0, Math.PI * 2);
                 ctx.fillStyle = isPhantom ? "rgba(139, 92, 246, 0.25)" : colors.glow;
                 ctx.fill();
             }
@@ -382,6 +411,22 @@ export default function NetworkGraph({
             ro.disconnect();
         };
     }, [render, rawNodes, rawLinks]);
+
+    // Continuous 60 FPS Animation Loop for edge flow and pulsing halos
+    useEffect(() => {
+        let animId: number;
+        let isRunning = true;
+        const loop = () => {
+            if (!isRunning) return;
+            render();
+            animId = requestAnimationFrame(loop);
+        };
+        animId = requestAnimationFrame(loop);
+        return () => {
+            isRunning = false;
+            cancelAnimationFrame(animId);
+        };
+    }, [render]);
 
     // Pan & Drag Handlers
     const dragRef = useRef<{ node: NetworkNode | null; offsetX: number; offsetY: number }>({

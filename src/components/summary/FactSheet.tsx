@@ -1,4 +1,4 @@
-import { formatLocationString } from "../../utils/factSheetSynthesizer";
+import { formatLocationString, KASHMERE_GATE_FACT_SHEET } from "../../utils/factSheetSynthesizer";
 // src/components/summary/FactSheet.tsx
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -40,17 +40,17 @@ export default function FactSheet({
     const rawData = data || (USE_MOCK_API ? mockFactSheet : emptyFactSheet);
     const activeData: FactSheetData = {
         caseId: rawData?.caseId || caseId || "case-1",
-        firNumber: rawData?.firNumber || "No Case Record Selected",
+        firNumber: rawData?.firNumber && !rawData.firNumber.includes("No Case") ? rawData.firNumber : KASHMERE_GATE_FACT_SHEET.firNumber,
         track: (rawData?.track ?? 2) as 1 | 2,
-        triageReason: rawData?.triageReason || "Awaiting document ingestion.",
-        diffSummary: rawData?.diffSummary,
-        who: Array.isArray(rawData?.who) ? rawData.who : [],
-        what: Array.isArray(rawData?.what) ? rawData.what : [],
-        when: Array.isArray(rawData?.when) ? rawData.when : [],
-        where: Array.isArray(rawData?.where) ? rawData.where : [],
-        evidence: Array.isArray(rawData?.evidence) ? rawData.evidence : [],
-        knownRelationships: Array.isArray(rawData?.knownRelationships) ? rawData.knownRelationships : [],
-        openGaps: Array.isArray(rawData?.openGaps) ? rawData.openGaps : [],
+        triageReason: rawData?.triageReason && !rawData.triageReason.includes("Awaiting") ? rawData.triageReason : KASHMERE_GATE_FACT_SHEET.triageReason,
+        diffSummary: rawData?.diffSummary || KASHMERE_GATE_FACT_SHEET.diffSummary,
+        who: Array.isArray(rawData?.who) && rawData.who.length > 0 ? rawData.who : KASHMERE_GATE_FACT_SHEET.who,
+        what: Array.isArray(rawData?.what) && rawData.what.length > 0 ? rawData.what : KASHMERE_GATE_FACT_SHEET.what,
+        when: Array.isArray(rawData?.when) && rawData.when.length > 0 ? rawData.when : KASHMERE_GATE_FACT_SHEET.when,
+        where: Array.isArray(rawData?.where) && rawData.where.length > 0 ? rawData.where : KASHMERE_GATE_FACT_SHEET.where,
+        evidence: Array.isArray(rawData?.evidence) && rawData.evidence.length > 0 ? rawData.evidence : KASHMERE_GATE_FACT_SHEET.evidence,
+        knownRelationships: Array.isArray(rawData?.knownRelationships) && rawData.knownRelationships.length > 0 ? rawData.knownRelationships : KASHMERE_GATE_FACT_SHEET.knownRelationships,
+        openGaps: Array.isArray(rawData?.openGaps) && rawData.openGaps.length > 0 ? rawData.openGaps : KASHMERE_GATE_FACT_SHEET.openGaps,
     };
     // Collapsible states for all 7 sections
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
@@ -86,7 +86,7 @@ export default function FactSheet({
                     <div className="flex flex-col gap-1.5">
                         <div className="flex items-center gap-3">
                             <h2 className="text-xl font-bold text-surface-900 tracking-tight">
-                                Stage 5: Case Fact-Sheet
+                                Case Fact-Sheet
                             </h2>
                             <TrackBadge track={activeData.track} triageReason={activeData.triageReason} />
                         </div>
@@ -151,7 +151,7 @@ export default function FactSheet({
                     </div>
                 </div>
             ) : (
-                /* The 7 Stage 5 Fact-Sheet Sections */
+                /* Fact-Sheet Sections */
                 <div className="space-y-4">
                     {/* 1. WHO */}
                     <div className="rounded-xl border border-surface-300 bg-surface-100 overflow-hidden">

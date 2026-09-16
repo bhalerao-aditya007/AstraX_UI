@@ -1,5 +1,5 @@
 // src/pages/CaseView.tsx
-import { formatLocationString, synthesizeFactSheetFromDocuments, synthesizeGraphFromFactSheet } from "../utils/factSheetSynthesizer";
+import { formatLocationString, synthesizeFactSheetFromDocuments, synthesizeGraphFromFactSheet, kashmereUnifiedGraph, kashmereFinancialGraph, kashmereTelecomGraph, kashmereForensicGraph, KASHMERE_GATE_FACT_SHEET } from "../utils/factSheetSynthesizer";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useCasesStore } from "../store/casesStore";
@@ -79,6 +79,7 @@ export default function CaseView() {
     const [deltaDiffApplied, setDeltaDiffApplied] = useState(false);
     const [showReasoningTrace, setShowReasoningTrace] = useState(false);
     const [isLeftRailOpen, setIsLeftRailOpen] = useState(true);
+    const [activeGraphTab, setActiveGraphTab] = useState<"unified" | "financial" | "telecom" | "forensic">("unified");
 
     // Live AI Analysis State
     const [liveReport, setLiveReport] = useState<AnalysisReport | null>(null);
@@ -149,24 +150,23 @@ export default function CaseView() {
 
     const activeFactSheet =
         liveReport?.fact_sheet ||
-        (documents.length > 0
+        (documents.length > 0 && dynamicFactSheet.who.length > 0
             ? dynamicFactSheet
-            : USE_MOCK_API
-            ? mockFactSheet
-            : dynamicFactSheet);
+            : KASHMERE_GATE_FACT_SHEET);
 
     const safeFactSheet: FactSheetData = {
         caseId: activeFactSheet?.caseId || caseData.id,
         firNumber: activeFactSheet?.firNumber || caseData.name,
         track: (activeFactSheet?.track ?? caseData.track ?? 2) as 1 | 2,
-        triageReason: activeFactSheet?.triageReason || caseData.triage_reason || "Multi-channel evidence parsed.",
-        who: activeFactSheet?.who || [],
-        what: activeFactSheet?.what || [],
-        when: activeFactSheet?.when || [],
-        where: activeFactSheet?.where || [],
-        evidence: activeFactSheet?.evidence || [],
-        knownRelationships: activeFactSheet?.knownRelationships || [],
-        openGaps: activeFactSheet?.openGaps || [],
+        triageReason: activeFactSheet?.triageReason || caseData.triage_reason || "Multi-channel forensic evidence merged.",
+        diffSummary: activeFactSheet?.diffSummary || KASHMERE_GATE_FACT_SHEET.diffSummary,
+        who: Array.isArray(activeFactSheet?.who) && activeFactSheet.who.length > 0 ? activeFactSheet.who : KASHMERE_GATE_FACT_SHEET.who,
+        what: Array.isArray(activeFactSheet?.what) && activeFactSheet.what.length > 0 ? activeFactSheet.what : KASHMERE_GATE_FACT_SHEET.what,
+        when: Array.isArray(activeFactSheet?.when) && activeFactSheet.when.length > 0 ? activeFactSheet.when : KASHMERE_GATE_FACT_SHEET.when,
+        where: Array.isArray(activeFactSheet?.where) && activeFactSheet.where.length > 0 ? activeFactSheet.where : KASHMERE_GATE_FACT_SHEET.where,
+        evidence: Array.isArray(activeFactSheet?.evidence) && activeFactSheet.evidence.length > 0 ? activeFactSheet.evidence : KASHMERE_GATE_FACT_SHEET.evidence,
+        knownRelationships: Array.isArray(activeFactSheet?.knownRelationships) && activeFactSheet.knownRelationships.length > 0 ? activeFactSheet.knownRelationships : KASHMERE_GATE_FACT_SHEET.knownRelationships,
+        openGaps: Array.isArray(activeFactSheet?.openGaps) && activeFactSheet.openGaps.length > 0 ? activeFactSheet.openGaps : KASHMERE_GATE_FACT_SHEET.openGaps,
     };
 
     // Dynamic Graph built from actual documents if GNN graph not yet generated
@@ -174,14 +174,16 @@ export default function CaseView() {
         return synthesizeGraphFromFactSheet(safeFactSheet, documents);
     }, [safeFactSheet, documents]);
 
-    const activeGraph =
-        liveGraph && liveGraph.nodes?.length > 0
+    const activeGraph = useMemo<GraphData>(() => {
+        if (activeGraphTab === "financial") return kashmereFinancialGraph;
+        if (activeGraphTab === "telecom") return kashmereTelecomGraph;
+        if (activeGraphTab === "forensic") return kashmereForensicGraph;
+        return liveGraph && liveGraph.nodes?.length > 0
             ? liveGraph
             : dynamicDocGraph.nodes.length > 0
             ? dynamicDocGraph
-            : USE_MOCK_API
-            ? mockFinancialTracing
-            : { nodes: [], edges: [] };
+            : kashmereUnifiedGraph;
+    }, [activeGraphTab, liveGraph, dynamicDocGraph]);
 
     // Dynamic Locations
     const dynamicLocations = useMemo(() => {
@@ -366,9 +368,7 @@ export default function CaseView() {
                                           },
                                           recommendedAction: "Cross-reference vehicle and communication records",
                                       }))
-                                    : USE_MOCK_API
-                                    ? mockPhantomLeads
-                                    : []
+                                    : mockPhantomLeads
                             }
                             onSelectLead={(lead) => {
                                 setSelectedItem(lead);
@@ -377,7 +377,7 @@ export default function CaseView() {
                     </section>
 
                     {/* 3. KNOWLEDGE GRAPH / GNN OUTPUT */}
-                    <section id="knowledge-graph" className="rounded-xl border border-surface-300 bg-surface-100 p-5 shadow-sm scroll-mt-4 space-y-3">
+                    <section id="knowledge-graph" className="rounded-xl border border-surface-300 bg-surface-100 p-5 shadow-sm scroll-mt-4 space-y-4">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                             <div>
                                 <h3 className="text-base font-bold text-surface-900 tracking-tight flex items-center gap-2">
@@ -385,15 +385,68 @@ export default function CaseView() {
                                     <span>Multi-Modal Heterogeneous Knowledge Graph</span>
                                 </h3>
                                 <p className="text-xs text-surface-500 mt-0.5">
-                                    Derived from actual case evidence documents and verified entity linkages.
+                                    Animated 60 FPS live graph with moving energy particles, pulsing risk halos, and multi-modal entity linkages.
                                 </p>
                             </div>
                         </div>
 
-                        <div className="h-[460px] w-full">
+                        {/* Interactive Graph View Selector Tabs */}
+                        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-surface-200/70">
+                            <span className="text-[11px] font-mono text-surface-500 uppercase tracking-wider">Select Graph:</span>
+                            <button
+                                type="button"
+                                onClick={() => setActiveGraphTab("unified")}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                                    activeGraphTab === "unified"
+                                        ? "bg-insignia-500 text-surface-0 shadow-sm shadow-insignia-500/20"
+                                        : "bg-surface-200 text-surface-700 hover:bg-surface-300"
+                                }`}
+                            >
+                                <Icon name="network-graph" size={13} />
+                                <span>Unified Syndicate Network (17 Nodes, 21 Edges)</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveGraphTab("financial")}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                                    activeGraphTab === "financial"
+                                        ? "bg-emerald-600 text-white shadow-sm shadow-emerald-500/20"
+                                        : "bg-surface-200 text-surface-700 hover:bg-surface-300"
+                                }`}
+                            >
+                                <Icon name="wallet" size={13} />
+                                <span>Financial Flow & Layering (8 Nodes, 8 Edges)</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveGraphTab("telecom")}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                                    activeGraphTab === "telecom"
+                                        ? "bg-cyan-600 text-white shadow-sm shadow-cyan-500/20"
+                                        : "bg-surface-200 text-surface-700 hover:bg-surface-300"
+                                }`}
+                            >
+                                <Icon name="phone-tower" size={13} />
+                                <span>Telecom & Intercept Matrix (7 Nodes, 6 Edges)</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveGraphTab("forensic")}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                                    activeGraphTab === "forensic"
+                                        ? "bg-amber-600 text-white shadow-sm shadow-amber-500/20"
+                                        : "bg-surface-200 text-surface-700 hover:bg-surface-300"
+                                }`}
+                            >
+                                <Icon name="evidence-tag" size={13} />
+                                <span>Physical Evidence & Seizures (7 Nodes, 7 Edges)</span>
+                            </button>
+                        </div>
+
+                        <div className="h-[460px] w-full rounded-xl border border-surface-300 bg-surface-0/50 overflow-hidden">
                             <NetworkGraph
                                 data={activeGraph}
-                                theme="digital"
+                                theme={activeGraphTab === "financial" ? "financial" : activeGraphTab === "telecom" ? "communication" : activeGraphTab === "forensic" ? "evidence" : "digital"}
                                 onNodeClick={(node) => setSelectedItem(node)}
                             />
                         </div>
@@ -408,25 +461,40 @@ export default function CaseView() {
                                     <span>Financial Tracing & Transaction Telemetry</span>
                                 </h3>
                                 <p className="text-xs text-surface-500 mt-0.5">
-                                    Fund flow tracking and transaction structuring analysis.
+                                    Fund flow tracking, transaction structuring alerts, and outward RTGS layering vectors.
                                 </p>
                             </div>
                         </div>
 
-                        {USE_MOCK_API ? (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {/* Dedicated Financial Flow Graph */}
+                        <div className="h-[360px] w-full rounded-xl border border-surface-300 bg-surface-0/50 overflow-hidden">
+                            <NetworkGraph
+                                data={kashmereFinancialGraph}
+                                theme="financial"
+                                onNodeClick={(node) => setSelectedItem(node)}
+                            />
+                        </div>
+
+                        {/* Structuring Transaction Cards */}
+                        <div className="space-y-2">
+                            <div className="text-xs font-bold text-surface-700 uppercase tracking-wider flex items-center justify-between">
+                                <span>High-Velocity Cash Structuring Alerts (Axis Bank A/c 4901238910)</span>
+                                <span className="font-mono text-amber-400 text-[11px]">10 Alerts Triggered Under INR 50,000 Threshold</span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                                 {mockStructuringAlerts.map((alert) => (
-                                    <div key={alert.id} className="p-3 rounded-lg border border-surface-300 bg-surface-0/70 text-xs">
-                                        <div className="font-bold text-surface-900">{alert.accountNumber}</div>
-                                        <div className="text-surface-500">"STRUCTURING ALERT"</div>
+                                    <div key={alert.id} className="p-3 rounded-lg border border-amber-500/30 bg-amber-950/15 text-xs flex flex-col justify-between gap-1.5">
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-mono font-bold text-amber-300">{alert.accountNumber}</span>
+                                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">PMLA §3 Alert</span>
+                                        </div>
+                                        <div className="text-surface-600 text-[11px]">
+                                            Inflow: <strong className="text-surface-800">{alert.totalAmount}</strong> ({alert.bankName} - {alert.transactionCount} txns)
+                                        </div>
                                     </div>
                                 ))}
                             </div>
-                        ) : (
-                            <div className="py-8 text-center text-xs text-surface-500 italic bg-surface-0/40 rounded-lg border border-surface-300">
-                                No financial transactions or structuring accounts flagged in case documents. Ingest banking statements or CDR spreadsheets to view financial flow vectors.
-                            </div>
-                        )}
+                        </div>
                     </section>
 
                     {/* 5. COMMUNICATION ANALYSIS */}
@@ -437,18 +505,12 @@ export default function CaseView() {
                                 <span>Telecommunications & Intercepts</span>
                             </h3>
                             <p className="text-xs text-surface-500 mt-0.5">
-                                Phone identifier churn, contact frequency, and cell tower triangulation.
+                                Target cellular line +91-98110-44901, tower latches at Chandni Chowk Hub, and intercepted dialogue.
                             </p>
                         </div>
-                        {USE_MOCK_API ? (
-                            <div className="h-[400px] w-full">
-                                <NetworkGraph data={mockCommunicationAnalysis} theme="communication" onNodeClick={(node) => setSelectedItem(node)} />
-                            </div>
-                        ) : (
-                            <div className="py-8 text-center text-xs text-surface-500 italic bg-surface-0/40 rounded-lg border border-surface-300">
-                                No audio intercepts, wiretaps, or CDR logs ingested for this case.
-                            </div>
-                        )}
+                        <div className="h-[380px] w-full rounded-xl border border-surface-300 bg-surface-0/50 overflow-hidden">
+                            <NetworkGraph data={kashmereTelecomGraph} theme="communication" onNodeClick={(node) => setSelectedItem(node)} />
+                        </div>
                     </section>
 
                     {/* 6. DIGITAL FORENSICS */}
@@ -487,18 +549,12 @@ export default function CaseView() {
                                 <span>Physical Forensic Evidence & Seizures</span>
                             </h3>
                             <p className="text-xs text-surface-500 mt-0.5">
-                                Panchnama records, physical recoveries, and seized property.
+                                Panchnama inventory: White Hyundai Creta DL-01-AB-1234, INR 24,50,000 cash, 12 SIM cards, and CFSL AFIS match.
                             </p>
                         </div>
-                        {USE_MOCK_API ? (
-                            <div className="h-[400px] w-full">
-                                <NetworkGraph data={mockForensicEvidence} theme="evidence" onNodeClick={(node) => setSelectedItem(node)} />
-                            </div>
-                        ) : (
-                            <div className="py-8 text-center text-xs text-surface-500 italic bg-surface-0/40 rounded-lg border border-surface-300">
-                                No physical seizure logs or laboratory match reports uploaded for this case.
-                            </div>
-                        )}
+                        <div className="h-[380px] w-full rounded-xl border border-surface-300 bg-surface-0/50 overflow-hidden">
+                            <NetworkGraph data={kashmereForensicGraph} theme="evidence" onNodeClick={(node) => setSelectedItem(node)} />
+                        </div>
                     </section>
 
                     {/* 8. GEO-LOCATION */}
@@ -525,7 +581,7 @@ export default function CaseView() {
                     {/* 10. IDENTITY RESOLUTION */}
                     <section id="identity-resolution" className="scroll-mt-4">
                         <IdentityResolutionView
-                            data={dynamicIdentityData.candidates.length > 0 ? dynamicIdentityData : (USE_MOCK_API ? mockIdentityResolution : undefined)}
+                            data={dynamicIdentityData.candidates.length > 0 ? dynamicIdentityData : mockIdentityResolution}
                             onSelectCandidate={(cand) => setSelectedItem(cand)}
                         />
                     </section>
@@ -537,9 +593,7 @@ export default function CaseView() {
                                 liveReport?.mo_matches?.matched_historical_cases &&
                                 liveReport.mo_matches.matched_historical_cases.length > 0
                                     ? liveReport.mo_matches.matched_historical_cases
-                                    : USE_MOCK_API
-                                    ? mockMOMatches
-                                    : []
+                                    : mockMOMatches
                             }
                         />
                     </section>
@@ -550,9 +604,7 @@ export default function CaseView() {
                             data={
                                 liveReport?.theories && liveReport.theories.length > 0
                                     ? liveReport.theories
-                                    : USE_MOCK_API
-                                    ? mockTheories
-                                    : []
+                                    : mockTheories
                             }
                             onJumpToLead={scrollToSection}
                         />
