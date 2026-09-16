@@ -1,3 +1,4 @@
+import { formatLocationString } from "../utils/factSheetSynthesizer";
 // src/services/analytics.ts
 import { apiRequest } from "./api";
 import { USE_MOCK_API } from "../config";
@@ -244,9 +245,9 @@ export function normalizeFactSheet(raw: any, caseId = "case-1", caseName = "Case
 
     const when = Array.isArray(raw.when)
         ? raw.when.map((item: any) => ({
-              timestamp: item.timestamp || new Date().toISOString(),
-              event: item.event || "",
-              location: item.location || "",
+              timestamp: formatLocationString(item.timestamp, new Date().toISOString()),
+              event: formatLocationString(item.event, "Incident"),
+              location: formatLocationString(item.location, "Jurisdiction"),
               citation: item.citation || {
                   documentTitle: "Temporal Timeline",
                   confidenceScore: 0.9,
@@ -256,9 +257,9 @@ export function normalizeFactSheet(raw: any, caseId = "case-1", caseName = "Case
 
     const where = Array.isArray(raw.where)
         ? raw.where.map((item: any) => ({
-              locationName: item.locationName || item.location || "",
-              jurisdiction: item.jurisdiction || "Special Operations",
-              significance: item.significance || "Incident Location",
+              locationName: formatLocationString(item.locationName) || formatLocationString(item.location) || "Jurisdiction",
+              jurisdiction: formatLocationString(item.jurisdiction) || "Special Operations",
+              significance: formatLocationString(item.significance) || "Incident Location",
               coordinates: (Array.isArray(item.coordinates) && item.coordinates.length === 2 ? item.coordinates : [28.6139, 77.2090]) as [number, number],
               citation: item.citation || {
                   documentTitle: "Geospatial Analysis",

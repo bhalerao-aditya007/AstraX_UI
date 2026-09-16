@@ -136,6 +136,46 @@ Candidate Identification:
    - Disambiguation Status: RESOLVED (De-duplication confidence: 96.2%)
 `;
 
+
+/**
+ * Safely converts location objects, strings, or numbers into clean strings,
+ * preventing React Minified Error #31 when database contains nested location objects.
+ */
+export function formatLocationString(val: any, fallback = ""): string {
+    if (!val) return fallback;
+    if (typeof val === "string") return val.trim() || fallback;
+    if (typeof val === "number" || typeof val === "boolean") return String(val);
+    if (typeof val === "object") {
+        if (Array.isArray(val)) {
+            return val.map((v) => formatLocationString(v)).filter(Boolean).join(", ") || fallback;
+        }
+        // Handle place_of_occurrence: {address, direction_from_police_station, distance_from_police_station, district, police_station}
+        const parts: string[] = [];
+        if (val.address) parts.push(formatLocationString(val.address));
+        if (val.distance_from_police_station || val.direction_from_police_station) {
+            const distDir = [val.distance_from_police_station, val.direction_from_police_station]
+                .filter(Boolean)
+                .map((v) => formatLocationString(v))
+                .join(" ");
+            if (distDir) parts.push(`(${distDir})`);
+        }
+        if (val.police_station) parts.push(`PS ${formatLocationString(val.police_station)}`);
+        if (val.district) parts.push(formatLocationString(val.district));
+        if (parts.length > 0) return parts.join(", ");
+
+        if (val.name) return formatLocationString(val.name);
+        if (val.title) return formatLocationString(val.title);
+        if (val.locationName) return formatLocationString(val.locationName);
+        if (val.location) return formatLocationString(val.location);
+
+        const strings = Object.values(val)
+            .filter((v) => typeof v === "string" && (v as string).trim())
+            .map((v) => (v as string).trim());
+        if (strings.length > 0) return strings.join(", ");
+    }
+    return fallback;
+}
+
 export function parseTextEvidence(text: string): Record<string, any> {
     const result: Record<string, any> = {
         accused: [],
@@ -318,10 +358,11 @@ export function synthesizeFactSheetFromDocuments(
         }
 
         if (ext.incident_datetime) {
+            const locStr = formatLocationString(ext.place_of_occurrence) || formatLocationString(ext.police_station) || "Jurisdiction";
             whenList.push({
-                timestamp: ext.incident_datetime,
-                event: ext.narrative || "Incident / Occurrence of offence",
-                location: ext.place_of_occurrence || ext.police_station || "Jurisdiction",
+                timestamp: formatLocationString(ext.incident_datetime, new Date().toISOString()),
+                event: formatLocationString(ext.narrative, "Incident / Occurrence of offence"),
+                location: locStr,
                 citation: {
                     documentTitle: doc.title,
                     confidenceScore: 0.94,
@@ -330,12 +371,17 @@ export function synthesizeFactSheetFromDocuments(
         }
 
         if (ext.place_of_occurrence || ext.police_station || ext.district) {
-            const locName = ext.place_of_occurrence || `${ext.police_station || ""}, ${ext.district || ""}`.replace(/^, |, $/g, "");
+            const locName = formatLocationString(ext.place_of_occurrence) ||
+                [formatLocationString(ext.police_station), formatLocationString(ext.district)].filter(Boolean).join(", ") ||
+                "Jurisdiction";
+            const jurisdictionStr = formatLocationString(ext.district) || "Delhi Police";
+            const significanceStr = ext.place_of_occurrence ? "Crime Scene" : "Jurisdiction";
+
             if (!whereList.some((w) => w.locationName === locName)) {
                 whereList.push({
                     locationName: locName,
-                    jurisdiction: ext.district || "Delhi Police",
-                    significance: ext.place_of_occurrence ? "Crime Scene" : "Jurisdiction",
+                    jurisdiction: jurisdictionStr,
+                    significance: significanceStr,
                     coordinates: [28.6667, 77.2333],
                     citation: {
                         documentTitle: doc.title,

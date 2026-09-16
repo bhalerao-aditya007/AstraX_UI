@@ -1,3 +1,4 @@
+import { formatLocationString } from "../../utils/factSheetSynthesizer";
 // src/components/summary/FactSheet.tsx
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -335,7 +336,7 @@ export default function FactSheet({
                                             </div>
                                             <div className="flex items-center gap-2 shrink-0 text-surface-500">
                                                 <span className="text-[11px] bg-surface-200 px-2 py-0.5 rounded">
-                                                    {event.location}
+                                                    {formatLocationString(event.location)}
                                                 </span>
                                                 <SourceCitationPopover source={event.citation} />
                                             </div>
@@ -391,16 +392,16 @@ export default function FactSheet({
                                         <div>
                                             <div className="flex items-start justify-between gap-2">
                                                 <div className="font-bold text-surface-900">
-                                                    {loc.locationName}
+                                                    {formatLocationString(loc.locationName)}
                                                 </div>
                                                 <SourceCitationPopover source={loc.citation} />
                                             </div>
                                             <div className="text-[11px] text-surface-500 mt-1 font-mono">
-                                                {loc.jurisdiction}
+                                                {formatLocationString(loc.jurisdiction)}
                                             </div>
                                         </div>
                                         <p className="text-surface-600 text-[11px] leading-relaxed">
-                                            {loc.significance}
+                                            {formatLocationString(loc.significance)}
                                         </p>
                                         <div className="font-mono text-[10px] text-insignia-400 pt-1 border-t border-surface-200">
                                             [{loc.coordinates[0].toFixed(4)}, {loc.coordinates[1].toFixed(4)}]

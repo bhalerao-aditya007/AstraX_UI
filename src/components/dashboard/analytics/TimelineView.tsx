@@ -1,3 +1,4 @@
+import { formatLocationString } from "../../../utils/factSheetSynthesizer";
 // src/components/dashboard/analytics/TimelineView.tsx
 import { useState } from "react";
 import { mockTimeline } from "../../../data/mockCaseData";
@@ -114,7 +115,7 @@ export default function TimelineView({ onSelect, events }: TimelineViewProps) {
                                     <div className="flex items-center gap-4 text-surface-500 font-mono text-[11px]">
                                         <span className="flex items-center gap-1">
                                             <Icon name="map-pin" size={12} className="text-surface-400" />
-                                            {event.location}
+                                            {formatLocationString(event.location)}
                                         </span>
                                         <ConfidenceBadge score={event.confidence} size="sm" />
                                     </div>

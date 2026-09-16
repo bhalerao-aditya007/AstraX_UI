@@ -1,5 +1,5 @@
 // src/pages/CaseView.tsx
-import { synthesizeFactSheetFromDocuments, synthesizeGraphFromFactSheet } from "../utils/factSheetSynthesizer";
+import { formatLocationString, synthesizeFactSheetFromDocuments, synthesizeGraphFromFactSheet } from "../utils/factSheetSynthesizer";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useCasesStore } from "../store/casesStore";
@@ -586,7 +586,7 @@ export default function CaseView() {
                                 </span>.
                                 Incident jurisdiction is documented under{" "}
                                 <span className="font-semibold text-surface-900">
-                                    {safeFactSheet.where.map((wh) => wh.locationName).join("; ") || "Jurisdiction under review"}
+                                    {safeFactSheet.where.map((wh) => formatLocationString(wh.locationName)).join("; ") || "Jurisdiction under review"}
                                 </span>.
                             </p>
                             <p className="text-surface-500 italic">
