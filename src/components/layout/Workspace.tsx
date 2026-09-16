@@ -11,7 +11,7 @@ import UploadDocument from "../upload/UploadDocument";
 import NetworkGraph from "../dashboard/analytics/NetworkGraph";
 import FactSheet from "../summary/FactSheet";
 import { USE_MOCK_API } from "../../config";
-import { synthesizeFactSheetFromDocuments } from "../../utils/factSheetSynthesizer";
+import { synthesizeFactSheetFromDocuments, synthesizeGraphFromFactSheet } from "../../utils/factSheetSynthesizer";
 import TrackBadge from "../ui/TrackBadge";
 import Loader from "../ui/Loader";
 import Icon from "../ui/Icon";
@@ -39,6 +39,31 @@ export default function Workspace() {
         }
     }, [selectedCaseId, fetchDocuments]);
 
+    const workspaceFactSheet = useMemo(() => {
+        if (USE_MOCK_API && documents.length === 0) {
+            return {
+                ...mockFactSheet,
+                caseId: selectedCase?.id || selectedCaseId || "case-1",
+                firNumber: selectedCase?.name || "Case Workspace",
+                track: ((selectedCase?.track ?? 2) as 1 | 2),
+                triageReason: selectedCase?.triage_reason || mockFactSheet.triageReason,
+            };
+        }
+        return synthesizeFactSheetFromDocuments(
+            documents,
+            selectedCase?.id || selectedCaseId || "case-1",
+            selectedCase?.name || "Case Workspace",
+            ((selectedCase?.track ?? 2) as 1 | 2),
+            selectedCase?.triage_reason || "Active Case Workspace"
+        );
+    }, [documents, selectedCase, selectedCaseId]);
+
+    const workspaceGraph = useMemo(() => {
+        return synthesizeGraphFromFactSheet(workspaceFactSheet, documents);
+    }, [workspaceFactSheet, documents]);
+
+    const isTrack2 = (selectedCase?.track ?? 2) === 2;
+
     if (!selectedCaseId) {
         return (
             <main className="flex min-w-0 flex-1 items-center justify-center bg-surface-0 p-6">
@@ -63,27 +88,6 @@ export default function Workspace() {
             </main>
         );
     }
-
-    const workspaceFactSheet = useMemo(() => {
-        if (USE_MOCK_API && documents.length === 0) {
-            return {
-                ...mockFactSheet,
-                caseId: selectedCase?.id || selectedCaseId,
-                firNumber: selectedCase?.name || "Case Workspace",
-                track: ((selectedCase?.track ?? 2) as 1 | 2),
-                triageReason: selectedCase?.triage_reason || mockFactSheet.triageReason,
-            };
-        }
-        return synthesizeFactSheetFromDocuments(
-            documents,
-            selectedCase?.id || selectedCaseId,
-            selectedCase?.name || "Case Workspace",
-            ((selectedCase?.track ?? 2) as 1 | 2),
-            selectedCase?.triage_reason || "Active Case Workspace"
-        );
-    }, [documents, selectedCase, selectedCaseId]);
-
-    const isTrack2 = (selectedCase?.track ?? 2) === 2;
 
     return (
         <>
@@ -153,7 +157,7 @@ export default function Workspace() {
 
                     <div className="h-[360px] w-full">
                         <NetworkGraph
-                            data={mockFinancialTracing}
+                            data={workspaceGraph.nodes.length > 0 ? workspaceGraph : mockFinancialTracing}
                             theme="digital"
                             showControls={false}
                         />

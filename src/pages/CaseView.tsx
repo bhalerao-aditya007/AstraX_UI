@@ -1,4 +1,5 @@
 // src/pages/CaseView.tsx
+import { synthesizeFactSheetFromDocuments, synthesizeGraphFromFactSheet } from "../utils/factSheetSynthesizer";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useCasesStore } from "../store/casesStore";
@@ -109,9 +110,18 @@ export default function CaseView() {
             setLiveReport(report);
             if (graph && graph.nodes?.length > 0) {
                 setLiveGraph(graph);
+            } else {
+                const synth = synthesizeGraphFromFactSheet(report?.fact_sheet || safeFactSheet, documents);
+                if (synth.nodes.length > 0) {
+                    setLiveGraph(synth);
+                }
             }
-        } catch {
-            // Error handling
+        } catch (err) {
+            console.error("Deep AI Analysis error:", err);
+            const synth = synthesizeGraphFromFactSheet(safeFactSheet, documents);
+            if (synth.nodes.length > 0) {
+                setLiveGraph(synth);
+            }
         } finally {
             setIsAnalyzing(false);
         }
@@ -128,125 +138,13 @@ export default function CaseView() {
 
     // Synthesize real case Fact Sheet dynamically from uploaded documents
     const dynamicFactSheet = useMemo<FactSheetData>(() => {
-        const whoList: FactSheetData["who"] = [];
-        const whatList: FactSheetData["what"] = [];
-        const whenList: FactSheetData["when"] = [];
-        const whereList: FactSheetData["where"] = [];
-        const evidenceList: FactSheetData["evidence"] = [];
-
-        documents.forEach((doc, idx) => {
-            const ext = (doc.extracted_information as any) || {};
-
-            const modality =
-                doc.document_type === "video"
-                    ? "video_cctv"
-                    : doc.document_type === "voice"
-                    ? "audio"
-                    : doc.document_type === "image"
-                    ? "scanned_doc"
-                    : "digital_text";
-
-            evidenceList.push({
-                id: doc.id,
-                modality,
-                fileName: doc.title || `Evidence-${idx + 1}`,
-                extractionStatus:
-                    doc.status === "finish" || doc.status === "success"
-                        ? "parsed"
-                        : doc.status === "failed"
-                        ? "failed"
-                        : "partial",
-                confidence: ext.confidence ? Number(ext.confidence) : 0.95,
-                note: ext.transcribed_text
-                    ? `Extracted: ${String(ext.transcribed_text).slice(0, 60)}...`
-                    : `Status: ${doc.status}`,
-            });
-
-            if (Array.isArray(ext.accused)) {
-                ext.accused.forEach((acc: any, aIdx: number) => {
-                    if (acc.name) {
-                        whoList.push({
-                            id: `acc-${idx}-${aIdx}`,
-                            name: acc.name,
-                            role: "Accused",
-                            alias: acc.alias,
-                            citation: {
-                                documentTitle: doc.title,
-                                confidenceScore: 0.95,
-                                rawSnippet: `Accused: ${acc.name}${acc.alias ? ` (${acc.alias})` : ""}`,
-                            },
-                        });
-                    }
-                });
-            }
-
-            if (ext.complainant?.name) {
-                whoList.push({
-                    id: `comp-${idx}`,
-                    name: ext.complainant.name,
-                    role: "Complainant",
-                    citation: {
-                        documentTitle: doc.title,
-                        confidenceScore: 0.98,
-                        rawSnippet: `Complainant: ${ext.complainant.name}`,
-                    },
-                });
-            }
-
-            if (Array.isArray(ext.acts_and_sections)) {
-                ext.acts_and_sections.forEach((sec: any) => {
-                    whatList.push({
-                        bnsSection: `${sec.act || "BNS"} ${sec.section || ""}`.trim(),
-                        statuteName: "Statutory Charge",
-                        description: ext.narrative || "Recorded from FIR extraction.",
-                        applicableTo: ext.accused?.[0]?.name || "Accused",
-                        citation: {
-                            documentTitle: doc.title,
-                            confidenceScore: 0.95,
-                        },
-                    });
-                });
-            }
-
-            if (ext.incident_datetime) {
-                whenList.push({
-                    timestamp: ext.incident_datetime,
-                    event: ext.narrative || "Incident reported",
-                    location: ext.police_station || "Jurisdiction",
-                    citation: {
-                        documentTitle: doc.title,
-                        confidenceScore: 0.92,
-                    },
-                });
-            }
-
-            if (ext.police_station || ext.district) {
-                whereList.push({
-                    locationName: `${ext.police_station || ""}, ${ext.district || ""}`.replace(/^, |, $/g, ""),
-                    jurisdiction: ext.district || "State Police",
-                    significance: "Reporting Police Station",
-                    coordinates: [28.6139, 77.2090],
-                    citation: {
-                        documentTitle: doc.title,
-                        confidenceScore: 0.9,
-                    },
-                });
-            }
-        });
-
-        return {
-            caseId: caseData.id,
-            firNumber: caseData.name,
-            track: (caseData.track ?? 2) as 1 | 2,
-            triageReason: caseData.triage_reason || "Multi-channel evidence parsed.",
-            who: whoList,
-            what: whatList,
-            when: whenList,
-            where: whereList,
-            evidence: evidenceList,
-            knownRelationships: [],
-            openGaps: [],
-        };
+        return synthesizeFactSheetFromDocuments(
+            documents,
+            caseData.id,
+            caseData.name,
+            (caseData.track ?? 2) as 1 | 2,
+            caseData.triage_reason || "Multi-channel forensic evidence merged."
+        );
     }, [documents, caseData.id, caseData.name, caseData.track, caseData.triage_reason]);
 
     const activeFactSheet =
@@ -273,43 +171,8 @@ export default function CaseView() {
 
     // Dynamic Graph built from actual documents if GNN graph not yet generated
     const dynamicDocGraph = useMemo<GraphData>(() => {
-        const nodes: GraphData["nodes"] = [];
-        const edges: GraphData["edges"] = [];
-
-        dynamicFactSheet.who.forEach((p) => {
-            nodes.push({
-                id: `node-${p.id}`,
-                label: p.name,
-                type: "person",
-                badge: p.role,
-                risk_score: p.role === "Accused" ? 0.85 : 0.2,
-                merge_reason: p.citation?.rawSnippet || "Extracted from case documents",
-            });
-        });
-
-        documents.forEach((d) => {
-            nodes.push({
-                id: `node-doc-${d.id}`,
-                label: d.title,
-                type: "document",
-                badge: d.document_type.toUpperCase(),
-                risk_score: 0.1,
-            });
-
-            dynamicFactSheet.who.forEach((p) => {
-                edges.push({
-                    id: `edge-${d.id}-${p.id}`,
-                    source: `node-doc-${d.id}`,
-                    target: `node-${p.id}`,
-                    label: "mentions",
-                    color: "#64748b",
-                    style: "solid",
-                });
-            });
-        });
-
-        return { nodes, edges };
-    }, [dynamicFactSheet.who, documents]);
+        return synthesizeGraphFromFactSheet(safeFactSheet, documents);
+    }, [safeFactSheet, documents]);
 
     const activeGraph =
         liveGraph && liveGraph.nodes?.length > 0

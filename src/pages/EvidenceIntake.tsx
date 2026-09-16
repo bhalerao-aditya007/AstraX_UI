@@ -12,7 +12,7 @@ import { initiateUpload, uploadToStorage, confirmUpload } from "../services/uplo
 import { getDocument } from "../services/documents";
 import { triggerHistoricalAnalysis } from "../services/analytics";
 import type { DocumentType } from "../services/documents";
-import { SAMPLE_FIR_TEXT, SAMPLE_CSV_TEXT } from "../utils/factSheetSynthesizer";
+import { SAMPLE_FIR_TEXT, SAMPLE_SEIZURE_TEXT, SAMPLE_CCTV_TEXT, SAMPLE_WIRETAP_TEXT, SAMPLE_CSV_TEXT, SAMPLE_BIO_TEXT } from "../utils/factSheetSynthesizer";
 
 const CHANNELS: ChannelConfig[] = [
     {
@@ -83,9 +83,36 @@ function createSampleQueue(): Record<string, ChannelFile[]> {
                 progress: 0,
             },
         ],
-        scanned_doc: [],
-        cctv_video: [],
-        audio_recordings: [],
+        scanned_doc: [
+            {
+                id: "sample-seizure-1",
+                file: new File([SAMPLE_SEIZURE_TEXT], "Seizure_Memo_Recovery_MoriGate.txt", { type: "text/plain" }),
+                name: "Seizure_Memo_Recovery_MoriGate.txt",
+                size: SAMPLE_SEIZURE_TEXT.length,
+                status: "queued",
+                progress: 0,
+            },
+        ],
+        cctv_video: [
+            {
+                id: "sample-cctv-1",
+                file: new File([SAMPLE_CCTV_TEXT], "CCTV_ANPR_KashmereGate_Toll_Cam04.txt", { type: "text/plain" }),
+                name: "CCTV_ANPR_KashmereGate_Toll_Cam04.txt",
+                size: SAMPLE_CCTV_TEXT.length,
+                status: "queued",
+                progress: 0,
+            },
+        ],
+        audio_recordings: [
+            {
+                id: "sample-audio-1",
+                file: new File([SAMPLE_WIRETAP_TEXT], "Wiretap_Intercept_Line9811_Session4.txt", { type: "text/plain" }),
+                name: "Wiretap_Intercept_Line9811_Session4.txt",
+                size: SAMPLE_WIRETAP_TEXT.length,
+                status: "queued",
+                progress: 0,
+            },
+        ],
         cdr_financial: [
             {
                 id: "sample-csv-1",
@@ -96,7 +123,16 @@ function createSampleQueue(): Record<string, ChannelFile[]> {
                 progress: 0,
             },
         ],
-        image_bio: [],
+        image_bio: [
+            {
+                id: "sample-bio-1",
+                file: new File([SAMPLE_BIO_TEXT], "Bio_Forensic_Aadhaar_Mismatch_Imran.txt", { type: "text/plain" }),
+                name: "Bio_Forensic_Aadhaar_Mismatch_Imran.txt",
+                size: SAMPLE_BIO_TEXT.length,
+                status: "queued",
+                progress: 0,
+            },
+        ],
     };
 }
 
@@ -206,16 +242,15 @@ export default function EvidenceIntake() {
         const uploadedDocIds: { id: string; name: string; type: DocumentType }[] = [];
 
         for (const [channelId, fileList] of Object.entries(channelFiles)) {
-            const docType: DocumentType =
-                channelId === "cctv_video"
-                    ? "video"
-                    : channelId === "audio_recordings"
-                    ? "voice"
-                    : channelId === "image_bio"
-                    ? "image"
-                    : "text";
-
             for (const item of fileList) {
+                const docType: DocumentType =
+                    channelId === "cctv_video" && item.name.match(/\.(mp4|avi|mov)$/i)
+                        ? "video"
+                        : channelId === "audio_recordings" && item.name.match(/\.(wav|mp3|m4a|ogg)$/i)
+                        ? "voice"
+                        : channelId === "image_bio" && item.name.match(/\.(jpg|jpeg|png|webp)$/i)
+                        ? "image"
+                        : "text";
                 if (item.file && item.file.size > 0) {
                     try {
                         setStreamedLogs((prev) => [
