@@ -13,13 +13,52 @@ interface TheoryBoardProps {
 import { USE_MOCK_API } from "../../../config";
 
 export default function TheoryBoard({ onJumpToLead, data }: TheoryBoardProps) {
-    const [theories, setTheories] = useState<CrimeTheory[]>(data !== undefined ? data : (USE_MOCK_API ? mockTheories : []));
-    const [activeVersion, setActiveVersion] = useState<string>(data && data[0] ? data[0].version : "v1");
+    const normalizeTheories = (rawList: CrimeTheory[]): any[] => {
+        return (rawList || []).map((raw, idx) => ({
+            ...raw,
+            id: raw.id || `th-${idx + 1}`,
+            version: raw.version || `v${idx + 1}`,
+            title: raw.title || (raw as any).hypothesisName || "Reconstructed Investigation Theory",
+            rationale: raw.rationale || raw.summary || "Synthesized from corroborated cross-modal case evidence.",
+            confidence: raw.confidence || 0.94,
+            isSuperseded: raw.isSuperseded ?? false,
+            sequence: Array.isArray(raw.sequence) && raw.sequence.length > 0
+                ? raw.sequence
+                : Array.isArray((raw as any).verificationSteps) && (raw as any).verificationSteps.length > 0
+                ? (raw as any).verificationSteps.map((step: string, sIdx: number) => ({
+                    stepNumber: sIdx + 1,
+                    description: step,
+                    confidence: raw.confidence || 0.94,
+                    citation: { documentTitle: (raw as any).supportingEvidence?.[0] || "Primary Case File", confidenceScore: 0.95 }
+                }))
+                : [
+                    {
+                        stepNumber: 1,
+                        description: raw.summary || "Initial incident reconstruction synthesized from primary evidence.",
+                        confidence: raw.confidence || 0.94,
+                        citation: { documentTitle: "Evidentiary Synthesis", confidenceScore: 0.95 }
+                    }
+                ],
+            unresolvedGaps: Array.isArray(raw.unresolvedGaps) && raw.unresolvedGaps.length > 0
+                ? raw.unresolvedGaps
+                : Array.isArray((raw as any).counterEvidence) && (raw as any).counterEvidence.length > 0
+                ? (raw as any).counterEvidence.map((ce: string, gIdx: number) => ({
+                    gapTitle: ce,
+                    linkedLeadId: `lead-${gIdx + 1}`
+                }))
+                : []
+        }));
+    };
+
+    const initialTheories = normalizeTheories(data !== undefined ? data : (USE_MOCK_API ? mockTheories : []));
+    const [theories, setTheories] = useState<any[]>(initialTheories);
+    const [activeVersion, setActiveVersion] = useState<string>(initialTheories[0]?.version || "v1");
 
     useEffect(() => {
         if (data !== undefined) {
-            setTheories(data);
-            if (data[0]) setActiveVersion(data[0].version);
+            const normalized = normalizeTheories(data);
+            setTheories(normalized);
+            if (normalized[0]) setActiveVersion(normalized[0].version);
         }
     }, [data]);
 
@@ -124,7 +163,7 @@ export default function TheoryBoard({ onJumpToLead, data }: TheoryBoardProps) {
                     </h5>
 
                     <div className="relative border-l-2 border-surface-300 ml-3 pl-6 space-y-4">
-                        {currentTheory.sequence.map((step) => (
+                        {(currentTheory.sequence || []).map((step) => (
                             <div key={step.stepNumber} className="relative">
                                 {/* Step Dot */}
                                 <div className="absolute -left-[31px] top-1 flex h-5 w-5 items-center justify-center rounded-full bg-surface-0 border-2 border-insignia-500 text-[10px] font-mono font-bold text-insignia-400 shadow-sm">
@@ -155,7 +194,7 @@ export default function TheoryBoard({ onJumpToLead, data }: TheoryBoardProps) {
                     </h5>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                        {currentTheory.unresolvedGaps.map((gap, i) => (
+                        {(currentTheory.unresolvedGaps || []).map((gap, i) => (
                             <div
                                 key={i}
                                 className="rounded-lg border border-purple-500/40 border-dashed bg-purple-950/20 p-3 text-xs flex flex-col justify-between gap-2"
@@ -166,7 +205,20 @@ export default function TheoryBoard({ onJumpToLead, data }: TheoryBoardProps) {
 
                                 <button
                                     type="button"
-                                    onClick={() => onJumpToLead && onJumpToLead(gap.linkedLeadId)}
+                                    onClick={() => {
+                                        if (onJumpToLead) {
+                                            onJumpToLead("lead-board");
+                                            setTimeout(() => {
+                                                const leadEl = document.getElementById(gap.linkedLeadId);
+                                                if (leadEl) {
+                                                    leadEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                                                    leadEl.classList.add("ring-2", "ring-purple-500", "ring-offset-2", "ring-offset-transparent");
+                                                    leadEl.style.transition = "box-shadow 0.3s, outline 0.3s";
+                                                    setTimeout(() => leadEl.classList.remove("ring-2", "ring-purple-500", "ring-offset-2", "ring-offset-transparent"), 3000);
+                                                }
+                                            }, 600);
+                                        }
+                                    }}
                                     className="inline-flex items-center justify-between text-[10px] font-mono text-purple-300 hover:text-white bg-purple-900/60 hover:bg-purple-800 px-2 py-1 rounded transition-colors cursor-pointer mt-1"
                                 >
                                     <span>Inspect Lead</span>

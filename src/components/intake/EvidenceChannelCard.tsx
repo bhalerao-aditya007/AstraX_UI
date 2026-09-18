@@ -159,7 +159,9 @@ export default function EvidenceChannelCard({
                             {files.map((fileItem) => (
                                 <div
                                     key={fileItem.id}
-                                    className="flex items-center justify-between rounded-lg border border-surface-300 bg-surface-0/80 px-2.5 py-1.5 text-xs font-mono"
+                                    onClick={() => handleViewFile(fileItem)}
+                                    className="flex items-center justify-between rounded-lg border border-surface-300 bg-surface-0/80 px-2.5 py-1.5 text-xs font-mono cursor-pointer hover:border-insignia-400/80 hover:bg-surface-200/60 transition-all group"
+                                    title="Click to inspect document content"
                                 >
                                     <div className="min-w-0 flex-1 pr-2">
                                         <div className="truncate font-medium text-surface-800">

@@ -69,7 +69,7 @@ export default function SourceCitationPopover({
                     />
                     <div
                         onClick={(e) => e.stopPropagation()}
-                        className="absolute left-0 top-full mt-2 z-50 w-80 rounded-xl border border-surface-300 bg-surface-100 p-4 shadow-2xl text-left"
+                        className="absolute right-0 top-full mt-2 z-50 w-72 sm:w-80 max-w-[calc(100vw-2.5rem)] rounded-xl border border-surface-300 bg-surface-100 p-4 shadow-2xl text-left"
                     >
                         <div className="flex items-start justify-between gap-2 border-b border-surface-200 pb-2 mb-3">
                             <div className="flex items-center gap-2">

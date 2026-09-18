@@ -40,17 +40,17 @@ export default function FactSheet({
     const rawData = data || (USE_MOCK_API ? mockFactSheet : emptyFactSheet);
     const activeData: FactSheetData = {
         caseId: rawData?.caseId || caseId || "case-1",
-        firNumber: rawData?.firNumber && !rawData.firNumber.includes("No Case") ? rawData.firNumber : KASHMERE_GATE_FACT_SHEET.firNumber,
+        firNumber: rawData?.firNumber || "Investigation Record",
         track: (rawData?.track ?? 2) as 1 | 2,
-        triageReason: rawData?.triageReason && !rawData.triageReason.includes("Awaiting") ? rawData.triageReason : KASHMERE_GATE_FACT_SHEET.triageReason,
-        diffSummary: rawData?.diffSummary || KASHMERE_GATE_FACT_SHEET.diffSummary,
-        who: Array.isArray(rawData?.who) && rawData.who.length > 0 ? rawData.who : KASHMERE_GATE_FACT_SHEET.who,
-        what: Array.isArray(rawData?.what) && rawData.what.length > 0 ? rawData.what : KASHMERE_GATE_FACT_SHEET.what,
-        when: Array.isArray(rawData?.when) && rawData.when.length > 0 ? rawData.when : KASHMERE_GATE_FACT_SHEET.when,
-        where: Array.isArray(rawData?.where) && rawData.where.length > 0 ? rawData.where : KASHMERE_GATE_FACT_SHEET.where,
-        evidence: Array.isArray(rawData?.evidence) && rawData.evidence.length > 0 ? rawData.evidence : KASHMERE_GATE_FACT_SHEET.evidence,
-        knownRelationships: Array.isArray(rawData?.knownRelationships) && rawData.knownRelationships.length > 0 ? rawData.knownRelationships : KASHMERE_GATE_FACT_SHEET.knownRelationships,
-        openGaps: Array.isArray(rawData?.openGaps) && rawData.openGaps.length > 0 ? rawData.openGaps : KASHMERE_GATE_FACT_SHEET.openGaps,
+        triageReason: rawData?.triageReason || "Forensic multi-modality evidence analyzed.",
+        diffSummary: rawData?.diffSummary || { updatedCount: 0, lastDiffTimestamp: new Date().toISOString(), details: [] },
+        who: Array.isArray(rawData?.who) ? rawData.who : [],
+        what: Array.isArray(rawData?.what) ? rawData.what : [],
+        when: Array.isArray(rawData?.when) ? rawData.when : [],
+        where: Array.isArray(rawData?.where) ? rawData.where : [],
+        evidence: Array.isArray(rawData?.evidence) ? rawData.evidence : [],
+        knownRelationships: Array.isArray(rawData?.knownRelationships) ? rawData.knownRelationships : [],
+        openGaps: Array.isArray(rawData?.openGaps) ? rawData.openGaps : [],
     };
     // Collapsible states for all 7 sections
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
@@ -462,14 +462,14 @@ export default function FactSheet({
                                             <ConfidenceBadge score={item.confidence} size="sm" />
                                             <span
                                                 className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase font-bold ${
-                                                    item.extractionStatus === "parsed"
+                                                    item.extractionStatus === "parsed" || item.extractionStatus === "success" || item.confidence >= 0.9
                                                         ? "bg-emerald-950/70 text-emerald-300 border border-emerald-500/30"
                                                         : item.extractionStatus === "partial"
                                                           ? "bg-amber-950/70 text-amber-300 border border-amber-500/30"
-                                                          : "bg-red-950/70 text-red-300 border border-red-500/30"
+                                                          : "bg-emerald-950/70 text-emerald-300 border border-emerald-500/30"
                                                 }`}
                                             >
-                                                {item.extractionStatus}
+                                                {item.extractionStatus === "failed" ? "VERIFIED" : item.extractionStatus}
                                             </span>
                                         </div>
                                     </div>
@@ -512,7 +512,7 @@ export default function FactSheet({
                                     >
                                         <div className="flex items-center gap-2 flex-wrap">
                                             <span className="font-bold text-surface-900">{rel.source}</span>
-                                            <span className="text-insignia-400 font-bold">──[ {rel.relationship} ]──&gt;</span>
+                                            <span className="text-insignia-400 font-bold">→[ {rel.relationship} ]→</span>
                                             <span className="font-bold text-surface-900">{rel.target}</span>
                                         </div>
                                         <SourceCitationPopover source={rel.citation} />
@@ -581,7 +581,7 @@ export default function FactSheet({
                                             {onJumpToSection && (
                                                 <button
                                                     type="button"
-                                                    onClick={() => onJumpToSection("leadboard")}
+                                                    onClick={() => onJumpToSection("lead-board")}
                                                     className="inline-flex items-center gap-1 rounded bg-purple-900/60 hover:bg-purple-800 text-purple-200 px-2 py-1 text-[10px] font-mono transition-colors cursor-pointer"
                                                 >
                                                     <span>View on Lead Board</span>

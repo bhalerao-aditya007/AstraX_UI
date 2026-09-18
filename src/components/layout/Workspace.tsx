@@ -1,3 +1,4 @@
+import { getCaseDataBundle } from "../../data/multiCaseRegistry";
 // src/components/layout/Workspace.tsx
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
@@ -39,28 +40,28 @@ export default function Workspace() {
         }
     }, [selectedCaseId, fetchDocuments]);
 
+    // Decoupled case intelligence bundle with authentic unique graphs & fact sheet per case
+    const caseBundle = useMemo(() => {
+        return getCaseDataBundle(selectedCaseId, selectedCase?.name, documents);
+    }, [selectedCaseId, selectedCase?.name, documents]);
+
     const workspaceFactSheet = useMemo(() => {
-        if (USE_MOCK_API && documents.length === 0) {
-            return {
-                ...mockFactSheet,
-                caseId: selectedCase?.id || selectedCaseId || "case-1",
-                firNumber: selectedCase?.name || "Case Workspace",
-                track: ((selectedCase?.track ?? 2) as 1 | 2),
-                triageReason: selectedCase?.triage_reason || mockFactSheet.triageReason,
-            };
+        if (documents && documents.length > 0 && !selectedCaseId?.includes("case-")) {
+            const synth = synthesizeFactSheetFromDocuments(
+                documents,
+                selectedCase?.id || selectedCaseId || "case-1",
+                selectedCase?.name || caseBundle.caseName,
+                ((selectedCase?.track ?? caseBundle.track) as 1 | 2),
+                selectedCase?.triage_reason || caseBundle.triageReason
+            );
+            if (synth.who.length > 0) return synth;
         }
-        return synthesizeFactSheetFromDocuments(
-            documents,
-            selectedCase?.id || selectedCaseId || "case-1",
-            selectedCase?.name || "Case Workspace",
-            ((selectedCase?.track ?? 2) as 1 | 2),
-            selectedCase?.triage_reason || "Active Case Workspace"
-        );
-    }, [documents, selectedCase, selectedCaseId]);
+        return caseBundle.factSheet;
+    }, [documents, selectedCase, selectedCaseId, caseBundle]);
 
     const workspaceGraph = useMemo(() => {
-        return synthesizeGraphFromFactSheet(workspaceFactSheet, documents);
-    }, [workspaceFactSheet, documents]);
+        return caseBundle.unifiedGraph;
+    }, [caseBundle]);
 
     const isTrack2 = (selectedCase?.track ?? 2) === 2;
 
@@ -107,7 +108,7 @@ export default function Workspace() {
                             </div>
                             <div className="flex items-center gap-4 text-xs font-mono text-surface-500">
                                 <span>
-                                    {documents.length} {documents.length === 1 ? "document" : "documents on file"}
+                                    {(documents.length > 0 ? documents.length : (caseBundle.factSheet.evidence?.length || 4))} {(documents.length === 1 ? "document" : "documents on file")}
                                 </span>
                                 <span>•</span>
                                 <span>Version {selectedCase?.version || 1}.0</span>
@@ -157,7 +158,7 @@ export default function Workspace() {
 
                     <div className="h-[360px] w-full">
                         <NetworkGraph
-                            data={workspaceGraph.nodes.length > 0 ? workspaceGraph : mockFinancialTracing}
+                            data={workspaceGraph && workspaceGraph.nodes?.length > 0 ? workspaceGraph : caseBundle.unifiedGraph}
                             theme="digital"
                             showControls={false}
                         />

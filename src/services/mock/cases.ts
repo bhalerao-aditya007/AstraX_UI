@@ -6,6 +6,15 @@ import type {
 
 let mockCases: Case[] = [
     {
+        id: "case-4",
+        name: "FIR 108/2026: Kashmere Gate Interstate Hawala Syndicate",
+        track: 2,
+        triage_reason: "Interstate syndicate: Kashmere Gate ISBT transit corridor, Axis Bank sub-Rs 50k structuring, and Dubai offshore layering.",
+        version: 2,
+        created_at: "2026-09-04T09:00:00Z",
+        updated_at: "2026-09-11T16:30:00Z",
+    },
+    {
         id: "case-1",
         name: "FIR 101/2026: Apex Financial Syndicate Investigation",
         track: 2,

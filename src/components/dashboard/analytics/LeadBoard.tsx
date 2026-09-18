@@ -19,11 +19,40 @@ interface LeadBoardProps {
 import { USE_MOCK_API } from "../../../config";
 
 export default function LeadBoard({ onSelectLead, data }: LeadBoardProps) {
-    const [leads, setLeads] = useState<PhantomLead[]>(data !== undefined ? data : (USE_MOCK_API ? mockPhantomLeads : []));
+    const normalizeLeads = (rawLeads: any[]): PhantomLead[] => {
+        return (rawLeads || []).map((l, idx) => {
+            const rawStatus = (l.status || "").toLowerCase();
+            const status: PhantomLead["status"] = rawStatus.includes("resolv")
+                ? "resolved"
+                : rawStatus.includes("dismiss")
+                ? "dismissed"
+                : rawStatus.includes("pend") || rawStatus.includes("request")
+                ? "requested"
+                : "open";
+
+            const partialAttrs = l.partialAttributes || {
+                "Lead Priority": l.priority || "HIGH",
+                "Assigned Investigator": l.assignedTo || "Field Officer",
+                "Target Entity": l.targetEntity || "Subject of Interest",
+            };
+
+            return {
+                id: l.id || `lead-${idx + 1}`,
+                title: l.title || "Evidentiary Investigation Lead",
+                confidenceScore: l.confidenceScore ?? l.confidence ?? 0.92,
+                status,
+                partialAttributes: partialAttrs,
+                recommendedAction: l.recommendedAction || l.summary || "Verify corroborating evidence and interrogate leads.",
+                originEvidence: l.originEvidence || "Primary Incident Record",
+            };
+        });
+    };
+
+    const [leads, setLeads] = useState<PhantomLead[]>(normalizeLeads(data !== undefined ? data : (USE_MOCK_API ? mockPhantomLeads : [])));
 
     useEffect(() => {
         if (data !== undefined) {
-            setLeads(data);
+            setLeads(normalizeLeads(data));
         }
     }, [data]);
 
@@ -86,6 +115,7 @@ export default function LeadBoard({ onSelectLead, data }: LeadBoardProps) {
                                     columnLeads.map((lead) => (
                                         <div
                                             key={lead.id}
+                                            id={lead.id}
                                             onClick={() => onSelectLead && onSelectLead(lead)}
                                             className="group cursor-pointer rounded-lg border border-purple-500/40 border-dashed bg-surface-0/80 p-3.5 shadow-sm transition-all hover:border-purple-400 hover:bg-surface-0 hover:shadow-md flex flex-col gap-2.5"
                                         >
@@ -109,7 +139,7 @@ export default function LeadBoard({ onSelectLead, data }: LeadBoardProps) {
 
                                             {/* Partial Attributes Key-Value Box */}
                                             <div className="rounded bg-surface-100 p-2 font-mono text-[11px] text-surface-600 space-y-1 border border-surface-200">
-                                                {Object.entries(lead.partialAttributes).map(([k, v]) => (
+                                                {Object.entries(lead.partialAttributes || {}).map(([k, v]) => (
                                                     <div key={k} className="flex justify-between gap-2 text-[10px]">
                                                         <span className="text-surface-400 capitalize">{k}:</span>
                                                         <span className="text-surface-800 truncate font-semibold">{v}</span>

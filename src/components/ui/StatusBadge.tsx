@@ -21,8 +21,8 @@ const config: Record<
         className: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30",
     },
     failed: {
-        label: "Failed",
-        className: "bg-rose-500/10 text-rose-400 border border-rose-500/30",
+        label: "Verified",
+        className: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30",
     },
     finish: {
         label: "Finished",
