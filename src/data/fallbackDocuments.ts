@@ -1,9 +1,9 @@
 // src/data/fallbackDocuments.ts
 // Fallback authentic evidence documents for database cases when the backend DB reports 0 files
 
-import type { Document } from "../types";
+import type { Document } from '../services/documents';
 
-export function getFallbackDocumentsForCase(caseId: string, caseName?: string): Document[] {
+export function getFallbackDocumentsForCase(caseId: string, caseName?: string): any[] {
     const id = (caseId || "").toLowerCase();
     const name = (caseName || "").toLowerCase();
 

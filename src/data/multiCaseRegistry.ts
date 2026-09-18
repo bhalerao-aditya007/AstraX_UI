@@ -24,8 +24,9 @@ export interface IdentityCandidate {
 }
 
 export interface IdentityResolutionData {
-    target: string;
-    candidates: IdentityCandidate[];
+    target?: string;
+    candidates?: IdentityCandidate[];
+    matches?: any[];
 }
 
 export interface CaseDataBundle {
@@ -3114,7 +3115,7 @@ function synthesizeCustomBundle(caseId: string, caseName: string, documents: Doc
             id: `dyn-ld-1`,
             title: `Apprehend & Interrogate Key Subject: ${leadPerson}`,
             assignedTo: "Lead Investigator",
-            status: "IN_PROGRESS",
+            status: "requested",
             priority: "CRITICAL",
             dueDate: new Date(Date.now() + 86400000 * 3).toISOString().split("T")[0],
             summary: `Execute search warrant and locate ${leadPerson} based on corroborated evidentiary documents.`,
@@ -3123,7 +3124,7 @@ function synthesizeCustomBundle(caseId: string, caseName: string, documents: Doc
             id: `dyn-ld-2`,
             title: `Freeze Associated Beneficiary Accounts`,
             assignedTo: "Financial Intelligence Unit",
-            status: "PENDING",
+            status: "open",
             priority: "HIGH",
             dueDate: new Date(Date.now() + 86400000 * 2).toISOString().split("T")[0],
             summary: "Serve Section 107 BNSS notices on branch managers for accounts identified in case evidence.",
@@ -3208,9 +3209,9 @@ function synthesizeCustomBundle(caseId: string, caseName: string, documents: Doc
         },
         locations: whereList.length > 0 ? whereList.map((w, i) => ({
             id: `dyn-loc-${i}`,
-            lat: w.coordinates[0],
-            lng: w.coordinates[1],
-            label: w.locationName,
+            lat: w.coordinates ? w.coordinates[0] : 0,
+            lng: w.coordinates ? w.coordinates[1] : 0,
+            label: w.locationName || "Scene",
             timestamp: new Date().toISOString(),
             entity: whoList[0]?.name || "Subject",
             type: "incident" as const,

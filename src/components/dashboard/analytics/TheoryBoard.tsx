@@ -163,7 +163,7 @@ export default function TheoryBoard({ onJumpToLead, data }: TheoryBoardProps) {
                     </h5>
 
                     <div className="relative border-l-2 border-surface-300 ml-3 pl-6 space-y-4">
-                        {(currentTheory.sequence || []).map((step) => (
+                        {(currentTheory.sequence || []).map((step: any) => (
                             <div key={step.stepNumber} className="relative">
                                 {/* Step Dot */}
                                 <div className="absolute -left-[31px] top-1 flex h-5 w-5 items-center justify-center rounded-full bg-surface-0 border-2 border-insignia-500 text-[10px] font-mono font-bold text-insignia-400 shadow-sm">
@@ -194,7 +194,7 @@ export default function TheoryBoard({ onJumpToLead, data }: TheoryBoardProps) {
                     </h5>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                        {(currentTheory.unresolvedGaps || []).map((gap, i) => (
+                        {(currentTheory.unresolvedGaps || []).map((gap: any, i: number) => (
                             <div
                                 key={i}
                                 className="rounded-lg border border-purple-500/40 border-dashed bg-purple-950/20 p-3 text-xs flex flex-col justify-between gap-2"

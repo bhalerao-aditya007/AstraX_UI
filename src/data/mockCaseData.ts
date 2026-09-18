@@ -1,3 +1,16 @@
+export interface CaseTimelineEvent {
+    id: string;
+    date: string;
+    time: string;
+    title: string;
+    summary: string;
+    type: "incident" | "arrest" | "financial" | "digital" | "forensic" | string;
+    confidence: number;
+    primaryEntity?: string;
+    location?: string;
+    citation?: CitationRef;
+}
+
 // src/data/mockCaseData.ts
 
 export interface CitationRef {
@@ -317,40 +330,50 @@ export interface FactSheetData {
         details: string[];
     };
     who: Array<{
-        id: string;
+        id?: string;
         name: string;
-        role: "Accused" | "Complainant" | "Witness" | "Unresolved-Phantom";
+        role: "Accused" | "Complainant" | "Witness" | "Unresolved-Phantom" | string;
         isPhantom?: boolean;
         alias?: string;
+        status?: string;
         citation: CitationRef;
     }>;
     what: Array<{
-        bnsSection: string;
-        statuteName: string;
-        description: string;
-        applicableTo: string;
+        bnsSection?: string;
+        statuteName?: string;
+        description?: string;
+        crimeDescription?: string;
+        ipcSection?: string;
+        natureOfIncident?: string;
+        severity?: string;
+        applicableTo?: string;
         citation: CitationRef;
     }>;
     when: Array<{
-        timestamp: string;
+        timestamp?: string;
+        date?: string;
+        time?: string;
         event: string;
-        location: string;
+        location?: string;
+        significance?: string;
         citation: CitationRef;
     }>;
     where: Array<{
-        locationName: string;
-        jurisdiction: string;
-        significance: string;
-        coordinates: [number, number];
+        id?: string;
+        locationName?: string;
+        placeName?: string;
+        jurisdiction?: string;
+        significance?: string;
+        coordinates?: [number, number];
         citation: CitationRef;
     }>;
     evidence: Array<{
         id: string;
-        modality: "digital_text" | "scanned_doc" | "video_cctv" | "audio" | "cdr_financial" | "image_bio";
+        modality: "digital_text" | "scanned_doc" | "video_cctv" | "audio" | "cdr_financial" | "image_bio" | string;
         fileName: string;
-        extractionStatus: "parsed" | "partial" | "failed";
+        extractionStatus: "parsed" | "partial" | "failed" | string;
         confidence: number;
-        note: string;
+        note?: string;
     }>;
     knownRelationships: Array<{
         id: string;
@@ -360,11 +383,14 @@ export interface FactSheetData {
         citation: CitationRef;
     }>;
     openGaps: Array<{
-        id: string;
-        title: string;
-        linkedLeadId: string;
-        severity: "critical" | "high" | "medium";
-        notes: string;
+        id?: string;
+        title?: string;
+        description?: string;
+        assignedInvestigator?: string;
+        priority?: "critical" | "high" | "medium" | string;
+        linkedLeadId?: string;
+        severity?: "critical" | "high" | "medium" | string;
+        notes?: string;
     }>;
 }
 
@@ -657,13 +683,20 @@ export const mockFactSheet: FactSheetData = {
 export interface PhantomLead {
     id: string;
     title: string;
-    phantomType: "vehicle" | "person" | "phone" | "wallet";
-    status: "open" | "requested" | "resolved" | "dismissed";
-    confidenceScore: number;
-    partialAttributes: Record<string, string>;
-    recommendedAction: string;
-    sourceDocument: string;
-    dateIdentified: string;
+    phantomType?: "vehicle" | "person" | "phone" | "wallet" | "document" | "location" | string;
+    status: "open" | "requested" | "resolved" | "dismissed" | string;
+    confidenceScore?: number;
+    partialAttributes?: Record<string, string>;
+    recommendedAction?: string;
+    sourceDocument?: string;
+    dateIdentified?: string;
+    originEvidence?: string;
+    assignedTo?: string;
+    category?: string;
+    severity?: string;
+    priority?: string;
+    dueDate?: string;
+    summary?: string;
 }
 
 export const mockPhantomLeads: PhantomLead[] = [
@@ -753,13 +786,16 @@ export interface StructuringAlert {
     id: string;
     accountNumber: string;
     bankName: string;
-    patternType: string;
-    totalAmount: string;
+    totalAmount: number | string;
     transactionCount: number;
     timeWindow: string;
-    confidence: number;
     riskScore: number;
-    gbmFeatures: string[];
+    flaggedReason?: string;
+    suspectedEntities?: string[];
+    recommendedAction?: string;
+    patternType?: string;
+    confidence?: number;
+    gbmFeatures?: any;
 }
 
 export const mockStructuringAlerts: StructuringAlert[] = [
@@ -802,17 +838,24 @@ export const mockStructuringAlerts: StructuringAlert[] = [
 ];
 
 export interface MOMatch {
-    id: string;
-    matchedCaseId: string;
-    title: string;
-    jurisdiction: string;
-    dateReported: string;
-    overallSimilarity: number;
-    geospatialSimilarity: number;
-    temporalSimilarity: number;
-    textSimilarity: number;
-    commonFactors: string[];
-    status: "Active Linkage" | "Under Review" | "Dismissed";
+    id?: string;
+    matchedCaseId?: string;
+    title?: string;
+    modusOperandi?: string;
+    similarity?: number;
+    similarityScore?: number;
+    overallSimilarity?: number;
+    geospatialSimilarity?: number;
+    temporalSimilarity?: number;
+    textSimilarity?: number;
+    jurisdiction?: string;
+    dateReported?: string;
+    commonFactors?: string[];
+    commonIndicators?: string[];
+    status?: string;
+    linkedCaseRef?: string;
+    matchingPatterns?: string[];
+    matchedCases?: any[];
 }
 
 export const mockMOMatches: MOMatch[] = [
@@ -870,22 +913,30 @@ export const mockMOMatches: MOMatch[] = [
 ];
 
 export interface CrimeTheory {
-    version: string;
+    id?: string;
+    version?: string;
     isSuperseded?: boolean;
     supersedesVersion?: string;
     title: string;
-    overallConfidenceQualifier: "strong evidence" | "possible lead" | "unconfirmed hypothesis";
-    overallConfidenceScore: number;
-    rationale: string;
-    sequence: Array<{
+    summary?: string;
+    confidence?: number;
+    supportingEvidence?: string[];
+    counterEvidence?: string[];
+    counterfactuals?: string[];
+    verificationSteps?: string[];
+    overallConfidenceQualifier?: "strong evidence" | "possible lead" | "unconfirmed hypothesis";
+    overallConfidenceScore?: number;
+    rationale?: string;
+    keyAssumptions?: string[];
+    sequence?: Array<{
         stepNumber: number;
         description: string;
         confidence: number;
         citation: CitationRef;
     }>;
-    unresolvedGaps: Array<{
+    unresolvedGaps?: Array<{
         gapTitle: string;
-        linkedLeadId: string;
+        linkedLeadId?: string;
     }>;
 }
 

@@ -42,7 +42,7 @@ export default function Workspace() {
 
     // Decoupled case intelligence bundle with authentic unique graphs & fact sheet per case
     const caseBundle = useMemo(() => {
-        return getCaseDataBundle(selectedCaseId, selectedCase?.name, documents);
+        return getCaseDataBundle(selectedCaseId || undefined, selectedCase?.name, documents);
     }, [selectedCaseId, selectedCase?.name, documents]);
 
     const workspaceFactSheet = useMemo(() => {

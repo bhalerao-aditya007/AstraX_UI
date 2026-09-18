@@ -56,6 +56,9 @@ export interface GraphNode {
     risk_score?: number;
     merge_reason?: string;
     is_phantom?: boolean;
+    color?: string;
+    radius?: number;
+    metadata?: Record<string, any>;
 }
 
 export interface GraphEdge {
@@ -70,6 +73,7 @@ export interface GraphEdge {
     valid_from?: string;
     merge_reason?: string;
     weight?: number;
+    type?: string;
 }
 
 export interface GraphData {

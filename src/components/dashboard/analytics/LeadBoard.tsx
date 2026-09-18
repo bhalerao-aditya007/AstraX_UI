@@ -39,10 +39,13 @@ export default function LeadBoard({ onSelectLead, data }: LeadBoardProps) {
             return {
                 id: l.id || `lead-${idx + 1}`,
                 title: l.title || "Evidentiary Investigation Lead",
+                phantomType: l.phantomType || "person",
                 confidenceScore: l.confidenceScore ?? l.confidence ?? 0.92,
                 status,
                 partialAttributes: partialAttrs,
                 recommendedAction: l.recommendedAction || l.summary || "Verify corroborating evidence and interrogate leads.",
+                sourceDocument: l.sourceDocument || "Primary Incident Record",
+                dateIdentified: l.dateIdentified || "2026-09-04",
                 originEvidence: l.originEvidence || "Primary Incident Record",
             };
         });
@@ -129,7 +132,7 @@ export default function LeadBoard({ onSelectLead, data }: LeadBoardProps) {
                                                         {lead.phantomType}
                                                     </span>
                                                 </div>
-                                                <ConfidenceBadge score={lead.confidenceScore} size="sm" />
+                                                <ConfidenceBadge score={lead.confidenceScore ?? 0.85} size="sm" />
                                             </div>
 
                                             {/* Lead Title */}

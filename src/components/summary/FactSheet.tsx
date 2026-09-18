@@ -404,7 +404,7 @@ export default function FactSheet({
                                             {formatLocationString(loc.significance)}
                                         </p>
                                         <div className="font-mono text-[10px] text-insignia-400 pt-1 border-t border-surface-200">
-                                            [{loc.coordinates[0].toFixed(4)}, {loc.coordinates[1].toFixed(4)}]
+                                            [{(loc.coordinates ? loc.coordinates[0].toFixed(4) : "0.0000")}, {(loc.coordinates ? loc.coordinates[1].toFixed(4) : "0.0000")}]
                                         </div>
                                     </div>
                                 ))}
@@ -462,7 +462,7 @@ export default function FactSheet({
                                             <ConfidenceBadge score={item.confidence} size="sm" />
                                             <span
                                                 className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase font-bold ${
-                                                    item.extractionStatus === "parsed" || item.extractionStatus === "success" || item.confidence >= 0.9
+                                                    (item.extractionStatus as string) === "parsed" || (item.extractionStatus as string) === "success" || item.confidence >= 0.9
                                                         ? "bg-emerald-950/70 text-emerald-300 border border-emerald-500/30"
                                                         : item.extractionStatus === "partial"
                                                           ? "bg-amber-950/70 text-amber-300 border border-amber-500/30"

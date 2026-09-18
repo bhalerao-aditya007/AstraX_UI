@@ -783,7 +783,7 @@ export function synthesizeFactSheetFromDocuments(
             }
         });
         KASHMERE_GATE_FACT_SHEET.what.forEach((w) => {
-            if (!whatList.some((x) => x.bnsSection.toLowerCase() === w.bnsSection.toLowerCase())) {
+            if (!whatList.some((x) => (x.bnsSection || "").toLowerCase() === (w.bnsSection || "").toLowerCase())) {
                 whatList.push(w);
             }
         });
@@ -793,7 +793,7 @@ export function synthesizeFactSheetFromDocuments(
             }
         });
         KASHMERE_GATE_FACT_SHEET.where.forEach((w) => {
-            if (!whereList.some((x) => x.locationName.toLowerCase() === w.locationName.toLowerCase())) {
+            if (!whereList.some((x) => (x.locationName || "").toLowerCase() === (w.locationName || "").toLowerCase())) {
                 whereList.push(w);
             }
         });

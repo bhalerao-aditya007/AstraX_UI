@@ -13,12 +13,12 @@ import { USE_MOCK_API } from "../../../config";
 
 export default function MOMatchList({ onSelectMatch, data }: MOMatchListProps) {
     const [matches, setMatches] = useState<MOMatch[]>(data !== undefined ? data : (USE_MOCK_API ? mockMOMatches : []));
-    const [expandedId, setExpandedId] = useState<string | null>(data && data[0] ? data[0].id : null);
+    const [expandedId, setExpandedId] = useState<string | null>(data && data[0] ? (data[0].id ?? null) : null);
 
     useEffect(() => {
         if (data !== undefined) {
             setMatches(data);
-            if (data[0]) setExpandedId(data[0].id);
+            if (data[0]) setExpandedId(data[0].id ?? null);
         }
     }, [data]);
 
@@ -78,7 +78,7 @@ export default function MOMatchList({ onSelectMatch, data }: MOMatchListProps) {
                         >
                             {/* Row Header */}
                             <div
-                                onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                                onClick={() => setExpandedId(isExpanded ? null : (item.id ?? null))}
                                 className="flex cursor-pointer items-center justify-between p-4"
                             >
                                 <div className="flex items-center gap-3">
