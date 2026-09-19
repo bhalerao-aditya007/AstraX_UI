@@ -1,9 +1,34 @@
 // src/components/dashboard/analytics/NetworkGraph.tsx
+//
+// Same engine (d3-force + canvas), same props, same filters — the physics,
+// drag, pan/zoom, temporal filter, hypothesis layer and flowing edge
+// particles all survive. What changed is the *rendering*:
+//
+//   · nodes get radial-gradient bodies, a soft outer halo and a crisp rim
+//     (depth, not flat fills)
+//   · label density is governed: above ~18 nodes, labels are hover-scoped;
+//     edge chips only draw when the graph is legible at the current zoom
+//   · hover dims the rest of the graph so one thread reads at a time
+//   · hypothesis edges/nodes keep the DESIGN.md contract: dashed, violet,
+//     desaturated, gently animated ("unresolved"); confirmed links are
+//     solid, sharp and static ("locked in")
+//   · the rAF loop now suspends when off-screen, when the tab is hidden and
+//     under prefers-reduced-motion — so ambient motion never competes with
+//     the rest of the page for frames.
+
 import { useRef, useEffect, useCallback, useState, useMemo } from "react";
-import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } from "d3-force";
+import {
+    forceSimulation,
+    forceLink,
+    forceManyBody,
+    forceCenter,
+    forceCollide,
+} from "d3-force";
 import type { SimulationNodeDatum, SimulationLinkDatum } from "d3-force";
-import { NODE_THEME_COLORS } from "../../../theme/colors";
+import { NODE_THEME_COLORS, EDGE_COLORS } from "../../../theme/colors";
 import Icon from "../../ui/Icon";
+import Chip from "../../ui/Chip";
+import { CursorThread, useMotionOK } from "../../motion";
 
 interface NetworkNode extends SimulationNodeDatum {
     id: string;
@@ -44,7 +69,9 @@ interface NetworkGraphProps {
     title?: string;
 }
 
-const NODE_RADIUS = 22;
+const NODE_RADIUS = 21;
+/** above this node count, labels become hover-scoped to keep the plate legible */
+const DENSE_THRESHOLD = 18;
 
 export default function NetworkGraph({
     data,
@@ -55,23 +82,18 @@ export default function NetworkGraph({
 }: NetworkGraphProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+    const motionOK = useMotionOK();
 
-    // Progressive Disclosure Controls
+    // Progressive disclosure controls (unchanged behaviour)
     const [showHypotheses, setShowHypotheses] = useState(false);
     const [temporalDate, setTemporalDate] = useState<string>("2026-09-30");
 
-    // Filtered data based on progressive disclosure
     const filteredEdges = useMemo(() => {
         return (data.edges || []).filter((edge) => {
-            // Hypothesis filter
-            const isHypo = edge.is_hypothesis || edge.category === "hypothesis" || edge.style === "dashed";
-            if (isHypo && !showHypotheses) {
-                return false;
-            }
-            // Temporal filter
-            if (edge.valid_from && edge.valid_from > temporalDate) {
-                return false;
-            }
+            const isHypo =
+                edge.is_hypothesis || edge.category === "hypothesis" || edge.style === "dashed";
+            if (isHypo && !showHypotheses) return false;
+            if (edge.valid_from && edge.valid_from > temporalDate) return false;
             return true;
         });
     }, [data.edges, showHypotheses, temporalDate]);
@@ -88,11 +110,8 @@ export default function NetworkGraph({
     }, [filteredEdges]);
 
     const filteredNodes = useMemo(() => {
-        // Keep all nodes unless they are phantom and isolated when hypothesis is off
         return (data.nodes || []).filter((node) => {
-            if (node.is_phantom && !showHypotheses && !activeNodeIds.has(node.id)) {
-                return false;
-            }
+            if (node.is_phantom && !showHypotheses && !activeNodeIds.has(node.id)) return false;
             return true;
         });
     }, [data.nodes, showHypotheses, activeNodeIds]);
@@ -112,11 +131,16 @@ export default function NetworkGraph({
     const hoveredRef = useRef<string | null>(null);
     const simRef = useRef<any>(null);
 
+    const dense = rawNodes.length > DENSE_THRESHOLD;
+    const denseRef = useRef(dense);
+    useEffect(() => {
+        denseRef.current = dense;
+    }, [dense]);
+
     const hitTest = useCallback((mx: number, my: number): NetworkNode | null => {
         const t = transformRef.current;
         const wx = (mx - t.x) / t.k;
         const wy = (my - t.y) / t.k;
-
         for (let i = nodesRef.current.length - 1; i >= 0; i--) {
             const n = nodesRef.current[i];
             const dx = (n.x ?? 0) - wx;
@@ -126,6 +150,7 @@ export default function NetworkGraph({
         return null;
     }, []);
 
+    /* ── Renderer ─────────────────────────────────────────────────────── */
     const render = useCallback(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -142,10 +167,10 @@ export default function NetworkGraph({
         ctx.translate(x, y);
         ctx.scale(k, k);
 
-        // Clamp positions
+        // keep nodes inside the plate
         for (const node of nodesRef.current) {
             if (node.x == null || node.y == null) continue;
-            const padding = NODE_RADIUS + 10;
+            const padding = NODE_RADIUS + 14;
             const hw = canvas.width / (2 * k) - padding;
             const hh = canvas.height / (2 * k) - padding;
             if (node.x > hw) node.x = hw;
@@ -155,221 +180,292 @@ export default function NetworkGraph({
         }
 
         const themeMapping = NODE_THEME_COLORS[theme] || NODE_THEME_COLORS.default;
+        const hoveredId = hoveredRef.current;
+        const isDense = denseRef.current;
+        const timeNow = Date.now() / 1000;
 
-        // ── Render Edges ──────────────────────────────────────────
-        for (const link of linksRef.current) {
-            const s = link.source as NetworkNode;
-            const e = link.target as NetworkNode;
-            if (s.x == null || s.y == null || e.x == null || e.y == null) continue;
-
-            const dx = e.x - s.x;
-            const dy = e.y - s.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist === 0) continue;
-
-            const padding = NODE_RADIUS + 2;
-            const targetX = e.x - (dx * padding) / dist;
-            const targetY = e.y - (dy * padding) / dist;
-            const sourceX = s.x + (dx * padding) / dist;
-            const sourceY = s.y + (dy * padding) / dist;
-
-            const isHypothesis = link.is_hypothesis || link.style === "dashed";
-
-            ctx.beginPath();
-            ctx.moveTo(sourceX, sourceY);
-            ctx.lineTo(targetX, targetY);
-
-            if (isHypothesis) {
-                ctx.strokeStyle = "#8b5cf6";
-                ctx.lineWidth = 2.0;
-                ctx.setLineDash([5, 5]);
-            } else {
-                ctx.strokeStyle = link.color || "#475569";
-                ctx.lineWidth = link.weight ? Math.min(4, link.weight) : 1.5;
-                ctx.setLineDash([]);
-            }
-            ctx.stroke();
-
-            // Arrowhead
-            ctx.setLineDash([]);
-            const arrowSize = 6 + (link.weight || 0);
-            const angle = Math.atan2(dy, dx);
-            ctx.beginPath();
-            ctx.moveTo(targetX, targetY);
-            ctx.lineTo(targetX - arrowSize * Math.cos(angle - Math.PI / 6), targetY - arrowSize * Math.sin(angle - Math.PI / 6));
-            ctx.lineTo(targetX - arrowSize * Math.cos(angle + Math.PI / 6), targetY - arrowSize * Math.sin(angle + Math.PI / 6));
-            ctx.closePath();
-            ctx.fillStyle = isHypothesis ? "#8b5cf6" : (link.color || "#64748b");
-            ctx.fill();
-
-            // Animated flowing energy particle along edge
-            const timeNow = Date.now() / 1000;
-            const linkSpeed = 0.45 + (link.weight ? link.weight * 0.15 : 0.2);
-            const sName = typeof s.id === "string" ? s.id : "src";
-            const eName = typeof e.id === "string" ? e.id : "tgt";
-            const phaseShift = (sName.length * 3 + eName.length * 7) * 0.11;
-            const tProg = ((timeNow * linkSpeed + phaseShift) % 1);
-            const px = sourceX + (targetX - sourceX) * tProg;
-            const py = sourceY + (targetY - sourceY) * tProg;
-
-            ctx.beginPath();
-            ctx.arc(px, py, 2.5, 0, Math.PI * 2);
-            ctx.fillStyle = isHypothesis ? "#c084fc" : (link.color || "#38bdf8");
-            ctx.shadowColor = ctx.fillStyle;
-            ctx.shadowBlur = 8;
-            ctx.fill();
-            ctx.shadowBlur = 0;
-
-            // Label
-            if (link.label) {
-                const mx = (s.x + e.x) / 2;
-                const my = (s.y + e.y) / 2;
-                ctx.font = "9px ui-monospace, monospace";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-
-                const metrics = ctx.measureText(link.label);
-                const bgW = metrics.width + 8;
-                const bgH = 14;
-
-                ctx.beginPath();
-                ctx.roundRect(mx - bgW / 2, my - bgH / 2 - 6, bgW, bgH, 3);
-                ctx.fillStyle = "rgba(11, 15, 20, 0.92)";
-                ctx.fill();
-                ctx.strokeStyle = isHypothesis ? "rgba(139, 92, 246, 0.4)" : "rgba(71, 85, 105, 0.5)";
-                ctx.lineWidth = 1;
-                ctx.stroke();
-
-                ctx.fillStyle = isHypothesis ? "#c4b5fd" : (link.color || "#94a3b8");
-                ctx.fillText(link.label, mx, my - 6);
+        // adjacency of the hovered node → everything else recedes
+        const focus = new Set<string>();
+        if (hoveredId) {
+            focus.add(hoveredId);
+            for (const l of linksRef.current) {
+                const s = (l.source as NetworkNode)?.id ?? (l.source as unknown as string);
+                const e = (l.target as NetworkNode)?.id ?? (l.target as unknown as string);
+                if (s === hoveredId) focus.add(e as string);
+                if (e === hoveredId) focus.add(s as string);
             }
         }
 
-        ctx.setLineDash([]);
+        /* ── Edges ───────────────────────────────────────────────────── */
+        for (const link of linksRef.current) {
+            const s = link.source as NetworkNode;
+            const e = link.target as NetworkNode;
+            if (!s || !e || s.x == null || s.y == null || e.x == null || e.y == null) continue;
 
-        // ── Render Nodes ──────────────────────────────────────────
+            const dx = e.x - s.x;
+            const dy = e.y - s.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist === 0) continue;
+
+            const pad = NODE_RADIUS + 3;
+            const sx = s.x + (dx * pad) / dist;
+            const sy = s.y + (dy * pad) / dist;
+            const tx = e.x - (dx * pad) / dist;
+            const ty = e.y - (dy * pad) / dist;
+
+            const isHypothesis = link.is_hypothesis || link.style === "dashed";
+            const inFocus = !hoveredId || (focus.has(s.id) && focus.has(e.id));
+            ctx.globalAlpha = inFocus ? 1 : 0.13;
+
+            // Confirmed edges fade from source→target so flow direction reads
+            // without shouting; hypothesis edges stay flat and desaturated.
+            let stroke: string | CanvasGradient;
+            if (isHypothesis) {
+                stroke = EDGE_COLORS.hypothesis;
+            } else if (link.color) {
+                stroke = link.color;
+            } else {
+                const g = ctx.createLinearGradient(sx, sy, tx, ty);
+                g.addColorStop(0, "rgba(123,115,110,0.35)");
+                g.addColorStop(1, inFocus && hoveredId ? EDGE_COLORS.confirmedActive : "rgba(123,115,110,0.95)");
+                stroke = g;
+            }
+
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(tx, ty);
+            ctx.strokeStyle = stroke;
+            ctx.lineCap = "round";
+            if (isHypothesis) {
+                ctx.lineWidth = 1.6;
+                ctx.setLineDash([5, 6]);
+                // slow crawl = "unresolved, still moving"
+                ctx.lineDashOffset = motionOK ? -(timeNow * 8) % 11 : 0;
+            } else {
+                ctx.lineWidth = link.weight ? Math.min(3, 1 + link.weight * 0.45) : 1.4;
+                ctx.setLineDash([]);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // arrowhead — small, sharp, never dominant
+            const angle = Math.atan2(dy, dx);
+            const a = 6.5;
+            ctx.beginPath();
+            ctx.moveTo(tx, ty);
+            ctx.lineTo(tx - a * Math.cos(angle - Math.PI / 7), ty - a * Math.sin(angle - Math.PI / 7));
+            ctx.lineTo(tx - a * Math.cos(angle + Math.PI / 7), ty - a * Math.sin(angle + Math.PI / 7));
+            ctx.closePath();
+            ctx.fillStyle = isHypothesis ? EDGE_COLORS.hypothesis : link.color || "#8b827c";
+            ctx.fill();
+
+            // travelling particle — data in motion along a confirmed channel
+            if (motionOK && inFocus) {
+                const speed = 0.4 + (link.weight ? link.weight * 0.12 : 0.18);
+                const phase = ((s.id?.length ?? 3) * 3 + (e.id?.length ?? 5) * 7) * 0.11;
+                const t = (timeNow * speed + phase) % 1;
+                const px = sx + (tx - sx) * t;
+                const py = sy + (ty - sy) * t;
+                ctx.beginPath();
+                ctx.arc(px, py, isHypothesis ? 1.9 : 2.2, 0, Math.PI * 2);
+                ctx.fillStyle = isHypothesis
+                    ? EDGE_COLORS.hypothesisParticle
+                    : link.color || EDGE_COLORS.particle;
+                ctx.shadowColor = ctx.fillStyle as string;
+                ctx.shadowBlur = 7;
+                ctx.globalAlpha = (inFocus ? 1 : 0.13) * (isHypothesis ? 0.75 : 1);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
+            // edge chips: only when the plate can carry them
+            const wantsLabel =
+                link.label &&
+                ((!isDense && k > 0.72) || (hoveredId && focus.has(s.id) && focus.has(e.id)));
+            if (wantsLabel) {
+                const mx = (s.x + e.x) / 2;
+                const my = (s.y + e.y) / 2;
+                ctx.font = "9px ui-monospace, SFMono-Regular, Menlo, monospace";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                const text =
+                    link.label.length > 26 ? `${link.label.slice(0, 25)}…` : link.label;
+                const w = ctx.measureText(text).width + 10;
+                ctx.globalAlpha = inFocus ? 1 : 0.1;
+                ctx.beginPath();
+                ctx.roundRect(mx - w / 2, my - 14, w, 15, 4);
+                ctx.fillStyle = EDGE_COLORS.labelBg;
+                ctx.fill();
+                ctx.strokeStyle = isHypothesis
+                    ? "rgba(135,118,209,0.45)"
+                    : EDGE_COLORS.labelBorder;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.fillStyle = isHypothesis ? "#c3b9f0" : EDGE_COLORS.labelText;
+                ctx.fillText(text, mx, my - 6.5);
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        /* ── Nodes ───────────────────────────────────────────────────── */
         for (const node of nodesRef.current) {
             if (node.x == null || node.y == null) continue;
 
-            const isHovered = hoveredRef.current === node.id;
+            const isHovered = hoveredId === node.id;
+            const inFocus = !hoveredId || focus.has(node.id);
             const colors = themeMapping[node.type] || themeMapping.default;
             const isPhantom = node.is_phantom || node.type === "phantom";
+            const highRisk = (node.risk_score ?? 0) > 0.8;
 
             ctx.save();
             ctx.translate(node.x, node.y);
+            ctx.globalAlpha = inFocus ? 1 : 0.16;
 
-            // Animated pulsing halo ring for hovered, high risk, or phantom nodes
-            const timeNow = Date.now() / 1000;
-            if (node.risk_score && node.risk_score > 0.8) {
-                const pulse = Math.sin(timeNow * 3.5 + (node.id.length * 0.7)) * 3;
+            // risk halo — breathing, red, unmistakable
+            if (highRisk) {
+                const pulse = motionOK ? Math.sin(timeNow * 2.6 + node.id.length * 0.7) * 2.4 : 0;
                 ctx.beginPath();
-                ctx.arc(0, 0, NODE_RADIUS + 5 + pulse, 0, Math.PI * 2);
-                ctx.strokeStyle = "rgba(239, 68, 68, 0.45)";
-                ctx.lineWidth = 1.75;
+                ctx.arc(0, 0, NODE_RADIUS + 6 + pulse, 0, Math.PI * 2);
+                ctx.strokeStyle = "rgba(220,90,84,0.4)";
+                ctx.lineWidth = 1.4;
                 ctx.stroke();
             }
 
+            // soft glow for hover / phantom
             if (isHovered || isPhantom) {
-                const pulse = isPhantom ? Math.sin(timeNow * 2.8 + (node.id.length * 0.5)) * 2.5 : 0;
+                const pulse =
+                    isPhantom && motionOK ? Math.sin(timeNow * 2.2 + node.id.length * 0.5) * 2.2 : 0;
                 ctx.beginPath();
-                ctx.arc(0, 0, NODE_RADIUS + 7 + pulse, 0, Math.PI * 2);
-                ctx.fillStyle = isPhantom ? "rgba(139, 92, 246, 0.25)" : colors.glow;
+                ctx.arc(0, 0, NODE_RADIUS + 9 + pulse, 0, Math.PI * 2);
+                ctx.fillStyle = isPhantom ? "rgba(135,118,209,0.16)" : colors.glow;
                 ctx.fill();
             }
 
-            // Node Geometry
-            if (isPhantom) {
-                // Dashed Circle for Phantom
-                ctx.beginPath();
-                ctx.arc(0, 0, NODE_RADIUS, 0, Math.PI * 2);
-                ctx.fillStyle = "#161026";
+            // body fill — radial gradient gives the node a lit top edge
+            const grad = ctx.createRadialGradient(
+                -NODE_RADIUS * 0.35,
+                -NODE_RADIUS * 0.45,
+                NODE_RADIUS * 0.15,
+                0,
+                0,
+                NODE_RADIUS * 1.15
+            );
+            grad.addColorStop(0, colors.fill);
+            grad.addColorStop(1, colors.fillEdge || colors.fill);
+
+            const drawBody = (path: () => void) => {
+                path();
+                ctx.fillStyle = isPhantom ? "#1c1830" : (grad as CanvasGradient);
                 ctx.fill();
-                ctx.strokeStyle = "#8b5cf6";
-                ctx.lineWidth = isHovered ? 2.5 : 1.75;
-                ctx.setLineDash([4, 4]);
+                ctx.strokeStyle = colors.stroke;
+                ctx.lineWidth = isHovered ? 2.2 : 1.25;
+                if (isPhantom) ctx.setLineDash([4, 4]);
                 ctx.stroke();
                 ctx.setLineDash([]);
-            } else if (node.type === "company" || node.type === "bank_account") {
-                // Rect for institutional accounts
-                ctx.beginPath();
-                ctx.roundRect(-NODE_RADIUS, -NODE_RADIUS, NODE_RADIUS * 2, NODE_RADIUS * 2, 6);
-                ctx.fillStyle = colors.fill;
-                ctx.fill();
-                ctx.strokeStyle = colors.stroke;
-                ctx.lineWidth = isHovered ? 2.5 : 1.5;
-                ctx.stroke();
-            } else if (node.type === "wallet" || node.type === "device") {
-                // Hexagon for crypto wallets / digital devices
-                ctx.beginPath();
-                for (let i = 0; i < 6; i++) {
-                    const angle = (Math.PI / 3) * i;
-                    const hx = NODE_RADIUS * Math.cos(angle);
-                    const hy = NODE_RADIUS * Math.sin(angle);
-                    if (i === 0) ctx.moveTo(hx, hy);
-                    else ctx.lineTo(hx, hy);
-                }
-                ctx.closePath();
-                ctx.fillStyle = colors.fill;
-                ctx.fill();
-                ctx.strokeStyle = colors.stroke;
-                ctx.lineWidth = isHovered ? 2.5 : 1.5;
-                ctx.stroke();
-            } else {
-                // Circle for persons, phones, locations
-                ctx.beginPath();
-                ctx.arc(0, 0, NODE_RADIUS, 0, Math.PI * 2);
-                ctx.fillStyle = colors.fill;
-                ctx.fill();
-                ctx.strokeStyle = colors.stroke;
-                ctx.lineWidth = isHovered ? 2.5 : 1.5;
-                ctx.stroke();
-            }
-
-            // High Risk Indicator Dot
-            if (node.risk_score && node.risk_score > 0.8) {
-                ctx.beginPath();
-                ctx.arc(NODE_RADIUS * 0.7, -NODE_RADIUS * 0.7, 5, 0, Math.PI * 2);
-                ctx.fillStyle = "#ef4444";
-                ctx.fill();
-                ctx.strokeStyle = "#ffffff";
-                ctx.lineWidth = 1;
-                ctx.stroke();
-            }
-
-            // Node Label
-            ctx.fillStyle = "#ffffff";
-            ctx.font = "bold 9px system-ui, sans-serif";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
+            };
 
             if (isPhantom) {
-                ctx.fillStyle = "#c4b5fd";
-                ctx.font = "bold 11px system-ui";
-                ctx.fillText("?", 0, -2);
+                drawBody(() => {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, NODE_RADIUS, 0, Math.PI * 2);
+                });
+            } else if (node.type === "company" || node.type === "bank_account" || node.type === "account") {
+                drawBody(() => {
+                    ctx.beginPath();
+                    ctx.roundRect(-NODE_RADIUS, -NODE_RADIUS, NODE_RADIUS * 2, NODE_RADIUS * 2, 7);
+                });
+            } else if (node.type === "wallet" || node.type === "device" || node.type === "server" || node.type === "ip") {
+                drawBody(() => {
+                    ctx.beginPath();
+                    for (let i = 0; i < 6; i++) {
+                        const ang = (Math.PI / 3) * i - Math.PI / 6;
+                        const hx = NODE_RADIUS * Math.cos(ang);
+                        const hy = NODE_RADIUS * Math.sin(ang);
+                        i === 0 ? ctx.moveTo(hx, hy) : ctx.lineTo(hx, hy);
+                    }
+                    ctx.closePath();
+                });
             } else {
-                const words = (node.label || "").split(" ");
-                if (words.length > 1 && words[0].length <= 10) {
-                    ctx.fillText(words[0], 0, -4);
-                    ctx.fillText(words[1].substring(0, 10), 0, 6);
-                } else {
-                    ctx.fillText((node.label || "").substring(0, 10), 0, 0);
-                }
+                drawBody(() => {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, NODE_RADIUS, 0, Math.PI * 2);
+                });
             }
 
-            // Node Badge (Subtext)
-            if (node.badge || isPhantom) {
-                ctx.fillStyle = isPhantom ? "#a78bfa" : "#94a3b8";
-                ctx.font = "9px ui-monospace, monospace";
-                ctx.fillText(isPhantom ? "HYPOTHESIS" : (node.badge || ""), 0, NODE_RADIUS + 11);
+            // inner specular arc — the "tactile" cue
+            ctx.beginPath();
+            ctx.arc(0, 0, NODE_RADIUS - 3.5, Math.PI * 1.15, Math.PI * 1.75);
+            ctx.strokeStyle = "rgba(246,242,237,0.16)";
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+
+            // high-risk marker
+            if (highRisk) {
+                ctx.beginPath();
+                ctx.arc(NODE_RADIUS * 0.68, -NODE_RADIUS * 0.68, 4.4, 0, Math.PI * 2);
+                ctx.fillStyle = "#dc5a54";
+                ctx.fill();
+                ctx.strokeStyle = "#0e0d0c";
+                ctx.lineWidth = 1.2;
+                ctx.stroke();
+            }
+
+            // glyph / initials inside the node
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            if (isPhantom) {
+                ctx.fillStyle = "#c3b9f0";
+                ctx.font = "bold 13px ui-monospace, monospace";
+                ctx.fillText("?", 0, 0);
+            } else {
+                const initials = (node.label || "?")
+                    .split(/\s+/)
+                    .slice(0, 2)
+                    .map((w: string) => w.replace(/[^A-Za-z0-9]/g, "").charAt(0))
+                    .join("")
+                    .toUpperCase();
+                ctx.fillStyle = "rgba(14,13,12,0.82)";
+                ctx.font = "bold 11px 'Inter', system-ui, sans-serif";
+                ctx.fillText(initials || "•", 0, 0.5);
+            }
+
+            // label chip beneath the node
+            const wantsLabel = !isDense || isHovered || (hoveredId ? focus.has(node.id) : false);
+            if (wantsLabel) {
+                const raw = node.label || "";
+                const text = raw.length > 22 ? `${raw.slice(0, 21)}…` : raw;
+                ctx.font = "10px 'Inter', system-ui, sans-serif";
+                const w = ctx.measureText(text).width + 12;
+                const cy = NODE_RADIUS + 13;
+                ctx.beginPath();
+                ctx.roundRect(-w / 2, cy - 8, w, 16, 5);
+                ctx.fillStyle = "rgba(20,19,18,0.9)";
+                ctx.fill();
+                ctx.strokeStyle = isPhantom
+                    ? "rgba(135,118,209,0.4)"
+                    : "rgba(48,45,43,0.95)";
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.fillStyle = isHovered ? "#f6f2ed" : "#c4bcb5";
+                ctx.fillText(text, 0, cy);
+
+                if ((node.badge || isPhantom) && (isHovered || !isDense)) {
+                    ctx.font = "9px ui-monospace, SFMono-Regular, Menlo, monospace";
+                    ctx.fillStyle = isPhantom ? "#a99ce4" : "#6e6763";
+                    const badge = isPhantom
+                        ? "HYPOTHESIS"
+                        : (node.badge || "").slice(0, 30);
+                    ctx.fillText(badge, 0, cy + 14);
+                }
             }
 
             ctx.restore();
         }
 
         ctx.restore();
-    }, [theme]);
+    }, [theme, motionOK]);
 
-    // Force simulation initialization and updates
+    /* ── Simulation ───────────────────────────────────────────────────── */
     useEffect(() => {
         const canvas = canvasRef.current;
         const container = containerRef.current;
@@ -377,12 +473,13 @@ export default function NetworkGraph({
 
         const resize = () => {
             const rect = container.getBoundingClientRect();
-            canvas.width = rect.width * window.devicePixelRatio;
-            canvas.height = rect.height * window.devicePixelRatio;
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
             canvas.style.width = `${rect.width}px`;
             canvas.style.height = `${rect.height}px`;
             const ctx = canvas.getContext("2d");
-            if (ctx) ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             if (transformRef.current.x === 0 && transformRef.current.y === 0) {
                 transformRef.current.x = rect.width / 2;
                 transformRef.current.y = rect.height / 2;
@@ -391,12 +488,17 @@ export default function NetworkGraph({
         resize();
 
         const sim = forceSimulation<NetworkNode>(nodesRef.current)
-            .force("link", forceLink<NetworkNode, NetworkLink>(linksRef.current).id((d) => d.id).distance(110))
-            .force("charge", forceManyBody().strength(-320))
+            .force(
+                "link",
+                forceLink<NetworkNode, NetworkLink>(linksRef.current)
+                    .id((d) => d.id)
+                    .distance(118)
+            )
+            .force("charge", forceManyBody().strength(-340))
             .force("center", forceCenter(0, 0))
-            .force("collide", forceCollide(NODE_RADIUS + 12));
+            .force("collide", forceCollide(NODE_RADIUS + 16));
 
-        for (let i = 0; i < 40; ++i) sim.tick();
+        for (let i = 0; i < 44; ++i) sim.tick();
         sim.on("tick", render);
         simRef.current = sim;
 
@@ -412,29 +514,43 @@ export default function NetworkGraph({
         };
     }, [render, rawNodes, rawLinks]);
 
-    // Continuous 60 FPS Animation Loop for edge flow and pulsing halos
+    /* ── Ambient loop, budgeted ───────────────────────────────────────── */
     useEffect(() => {
-        let animId: number;
-        let isRunning = true;
-        const loop = () => {
-            if (!isRunning) return;
+        // Under reduced motion we render on demand only (sim ticks + input).
+        if (!motionOK) {
             render();
+            return;
+        }
+        const container = containerRef.current;
+        let visible = true;
+        const io = container
+            ? new IntersectionObserver(([e]) => (visible = e.isIntersecting), { threshold: 0 })
+            : null;
+        if (io && container) io.observe(container);
+
+        let animId = 0;
+        let running = true;
+        const loop = () => {
+            if (!running) return;
+            if (visible && document.visibilityState === "visible") render();
             animId = requestAnimationFrame(loop);
         };
         animId = requestAnimationFrame(loop);
-        return () => {
-            isRunning = false;
-            cancelAnimationFrame(animId);
-        };
-    }, [render]);
 
-    // Pan & Drag Handlers
+        return () => {
+            running = false;
+            cancelAnimationFrame(animId);
+            io?.disconnect();
+        };
+    }, [render, motionOK]);
+
+    /* ── Pointer interaction (unchanged semantics) ────────────────────── */
     const dragRef = useRef<{ node: NetworkNode | null; offsetX: number; offsetY: number }>({
-        node: null, offsetX: 0, offsetY: 0,
+        node: null,
+        offsetX: 0,
+        offsetY: 0,
     });
-    const panRef = useRef<{ active: boolean; startX: number; startY: number; startTx: number; startTy: number }>({
-        active: false, startX: 0, startY: 0, startTx: 0, startTy: 0,
-    });
+    const panRef = useRef({ active: false, startX: 0, startY: 0, startTx: 0, startTy: 0 });
 
     const getMousePos = (e: React.MouseEvent) => {
         const rect = canvasRef.current?.getBoundingClientRect();
@@ -445,7 +561,6 @@ export default function NetworkGraph({
     const handleMouseDown = (e: React.MouseEvent) => {
         const pos = getMousePos(e);
         const node = hitTest(pos.x, pos.y);
-
         if (node) {
             dragRef.current = {
                 node,
@@ -486,7 +601,7 @@ export default function NetworkGraph({
 
         const node = hitTest(pos.x, pos.y);
         const canvas = canvasRef.current;
-        if (canvas) canvas.style.cursor = node ? "pointer" : "default";
+        if (canvas) canvas.style.cursor = node ? "pointer" : "grab";
 
         if (node) {
             if (hoveredRef.current !== node.id) {
@@ -512,9 +627,7 @@ export default function NetworkGraph({
     const handleClick = (e: React.MouseEvent) => {
         const pos = getMousePos(e);
         const node = hitTest(pos.x, pos.y);
-        if (node && onNodeClick) {
-            onNodeClick(node);
-        }
+        if (node && onNodeClick) onNodeClick(node);
     };
 
     const handleWheel = (e: React.WheelEvent) => {
@@ -523,7 +636,6 @@ export default function NetworkGraph({
         const t = transformRef.current;
         const factor = e.deltaY < 0 ? 1.1 : 0.9;
         const newK = Math.max(0.3, Math.min(3, t.k * factor));
-
         t.x = pos.x - (pos.x - t.x) * (newK / t.k);
         t.y = pos.y - (pos.y - t.y) * (newK / t.k);
         t.k = newK;
@@ -537,89 +649,112 @@ export default function NetworkGraph({
         transformRef.current = { x: rect.width / 2, y: rect.height / 2, k: 1 };
         render();
     };
-
     const zoomIn = () => {
         transformRef.current.k = Math.min(3, transformRef.current.k * 1.25);
         render();
     };
-
     const zoomOut = () => {
         transformRef.current.k = Math.max(0.3, transformRef.current.k * 0.8);
         render();
     };
 
+    const hypothesisCount = (data.edges || []).filter(
+        (e: any) => e.is_hypothesis || e.style === "dashed"
+    ).length;
+
+    /* ── Chrome ───────────────────────────────────────────────────────── */
     return (
-        <div className="relative h-full w-full flex flex-col bg-surface-0 rounded-xl overflow-hidden border border-surface-300">
-            {/* Top Toolbar / Progressive Disclosure Controls */}
+        <div className="relative flex h-full w-full flex-col overflow-hidden rounded-xl border border-surface-300 bg-surface-0">
             {showControls && (
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-surface-300 bg-surface-100/90 px-4 py-2.5 z-20">
-                    <div className="flex items-center gap-2">
+                <div className="z-20 flex flex-wrap items-center justify-between gap-3 border-b border-surface-300 bg-surface-100/80 px-4 py-2.5 backdrop-blur">
+                    <div className="flex items-center gap-3">
                         {title && (
-                            <span className="text-xs font-bold uppercase tracking-wider text-surface-900 mr-2">
+                            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-surface-600">
                                 {title}
                             </span>
                         )}
-                        {/* Toggle Hypothesis Layer */}
+
+                        {/* Hypothesis layer: the single most consequential toggle here */}
                         <button
                             type="button"
                             onClick={() => setShowHypotheses(!showHypotheses)}
-                            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-mono font-bold transition-all ${
+                            className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1 font-mono text-[11px] font-semibold transition-all ${
                                 showHypotheses
-                                    ? "bg-purple-950/80 border-purple-500/60 text-purple-300 shadow-[0_0_10px_rgba(139,92,246,0.3)]"
-                                    : "bg-surface-200 border-surface-300 text-surface-400 hover:text-surface-200 hover:bg-surface-300"
+                                    ? "hypothesis-surface border-purple-500/60 bg-purple-500/12 text-purple-300"
+                                    : "border-surface-300 bg-surface-200/70 text-surface-500 hover:text-surface-800"
                             }`}
+                            title="GNN-predicted links are hypotheses, never findings"
                         >
-                            <span className={`h-1.5 w-1.5 rounded-full ${showHypotheses ? "bg-purple-400 animate-ping" : "bg-surface-400"}`} />
-                            <span>Hypothesis Layer: {showHypotheses ? "ON" : "OFF"}</span>
+                            <span className="relative flex h-2.5 w-4 items-center">
+                                <span
+                                    className={`absolute inset-0 rounded-full border ${
+                                        showHypotheses
+                                            ? "border-purple-400/70 bg-purple-500/25"
+                                            : "border-surface-400 bg-surface-300/60"
+                                    }`}
+                                />
+                                <span
+                                    className={`absolute top-1/2 h-2 w-2 -translate-y-1/2 rounded-full transition-all ${
+                                        showHypotheses
+                                            ? "left-[9px] bg-purple-300"
+                                            : "left-[1px] bg-surface-500"
+                                    }`}
+                                />
+                            </span>
+                            <span>Hypothesis layer</span>
+                            {hypothesisCount > 0 && (
+                                <span className="opacity-70">({hypothesisCount})</span>
+                            )}
                         </button>
                     </div>
 
-                    {/* Temporal Slider & Zoom Controls */}
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 text-xs font-mono text-surface-500">
-                            <span>Time Filter:</span>
+                    <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2 font-mono text-[11px] text-surface-500">
+                            <span className="hidden sm:inline">As of</span>
                             <input
                                 type="date"
                                 value={temporalDate}
                                 onChange={(e) => setTemporalDate(e.target.value)}
-                                className="rounded border border-surface-300 bg-surface-0 px-2 py-0.5 text-xs text-surface-700 font-mono focus:border-insignia-500 focus:outline-none"
+                                className="rounded-md border border-surface-300 bg-surface-0 px-2 py-0.5 font-mono text-[11px] text-surface-700 outline-none focus:border-ember-500/70"
                             />
-                        </div>
+                        </label>
 
-                        <div className="flex items-center gap-1 border-l border-surface-200 pl-3">
-                            <button
-                                type="button"
-                                onClick={zoomIn}
-                                className="h-6 w-6 rounded bg-surface-200 text-surface-400 hover:text-white flex items-center justify-center text-xs font-bold"
-                                title="Zoom In"
-                            >
-                                +
-                            </button>
-                            <button
-                                type="button"
-                                onClick={zoomOut}
-                                className="h-6 w-6 rounded bg-surface-200 text-surface-400 hover:text-white flex items-center justify-center text-xs font-bold"
-                                title="Zoom Out"
-                            >
-                                -
-                            </button>
+                        <div className="flex items-center gap-1 border-l border-surface-300 pl-3">
+                            {[
+                                { fn: zoomIn, label: "+", title: "Zoom in" },
+                                { fn: zoomOut, label: "−", title: "Zoom out" },
+                            ].map((b) => (
+                                <button
+                                    key={b.title}
+                                    type="button"
+                                    onClick={b.fn}
+                                    title={b.title}
+                                    className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-surface-300 bg-surface-200/70 text-xs font-bold text-surface-500 transition-colors hover:text-surface-900"
+                                >
+                                    {b.label}
+                                </button>
+                            ))}
                             <button
                                 type="button"
                                 onClick={resetZoom}
-                                className="h-6 px-2 rounded bg-surface-200 text-surface-400 hover:text-white text-[10px] font-mono flex items-center justify-center"
-                                title="Reset View"
+                                title="Reset view"
+                                className="flex h-6 cursor-pointer items-center justify-center rounded-md border border-surface-300 bg-surface-200/70 px-2 font-mono text-[10px] text-surface-500 transition-colors hover:text-surface-900"
                             >
-                                Reset
+                                reset
                             </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Canvas Container */}
-            <div ref={containerRef} className="relative flex-1 w-full bg-surface-0 min-h-[380px]">
-                {/* Tactical grid background overlay */}
-                <div className="absolute inset-0 bg-tactical-grid opacity-15 pointer-events-none" />
+            {/* Canvas plate */}
+            <div
+                ref={containerRef}
+                className="relative min-h-[380px] w-full flex-1 bg-surface-0"
+            >
+                <div className="bg-tactical-grid pointer-events-none absolute inset-0 opacity-[0.55]" />
+                <div className="bg-tactical-radar pointer-events-none absolute inset-0 opacity-70" />
+                <CursorThread color="168,91,58" />
 
                 <canvas
                     ref={canvasRef}
@@ -629,29 +764,42 @@ export default function NetworkGraph({
                     onMouseLeave={handleMouseUp}
                     onClick={handleClick}
                     onWheel={handleWheel}
-                    className="absolute inset-0 h-full w-full outline-none select-none"
+                    className="absolute inset-0 h-full w-full select-none outline-none"
                 />
+
+                {rawNodes.length === 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-center">
+                            <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-dashed border-surface-400 text-surface-500">
+                                <Icon name="network-graph" size={20} />
+                            </div>
+                            <p className="font-display text-sm font-bold text-surface-700">
+                                No linked entities yet
+                            </p>
+                            <p className="mx-auto mt-1 max-w-xs font-mono text-[11px] text-surface-500">
+                                Ingest two or more corroborating exhibits to draw the first edge.
+                            </p>
+                        </div>
+                    </div>
+                )}
             </div>
 
-            {/* Bottom Legend */}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-surface-300 bg-surface-100/90 px-4 py-2 z-20 text-[11px] font-mono text-surface-500">
-                <div className="flex items-center gap-4 flex-wrap">
-                    <div className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                        <span>Evidentiary Link</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        <span className="h-0 w-3 border-b-2 border-dashed border-purple-400" />
-                        <span className="text-purple-300">GNN Hypothesis (Predicted)</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-red-500" />
-                        <span>High Risk / Flagged</span>
-                    </div>
+            {/* Legend */}
+            <div className="z-20 flex flex-wrap items-center justify-between gap-3 border-t border-surface-300 bg-surface-100/80 px-4 py-2 backdrop-blur">
+                <div className="flex flex-wrap items-center gap-2">
+                    <Chip tone="confirmed" size="xs" dot>
+                        Evidentiary link
+                    </Chip>
+                    <Chip tone="hypothesis" size="xs" dot>
+                        GNN hypothesis — not a finding
+                    </Chip>
+                    <Chip tone="risk" size="xs" dot>
+                        High risk
+                    </Chip>
                 </div>
-
-                <div className="text-[10px] text-surface-400">
-                    Click any node or link to view entity-resolution reasoning string
+                <div className="font-mono text-[10px] text-surface-500">
+                    {rawNodes.length} nodes · {rawLinks.length} edges
+                    {dense && " · labels on hover"}
                 </div>
             </div>
         </div>

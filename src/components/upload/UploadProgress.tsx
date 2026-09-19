@@ -1,4 +1,9 @@
+// src/components/upload/UploadProgress.tsx
+// Stage machine, props, and thresholds unchanged.
+
 import type { Document } from "../../services/documents";
+import Icon from "../ui/Icon";
+import Button from "../ui/Button";
 
 type UploadStage =
     | "idle"
@@ -26,27 +31,15 @@ const stageLabels: Record<UploadStage, string> = {
     error: "Upload failed",
 };
 
-const stageOrder: UploadStage[] = [
-    "initiating",
-    "uploading",
-    "confirming",
-    "processing",
-    "done",
-];
+const stageOrder: UploadStage[] = ["initiating", "uploading", "confirming", "processing", "done"];
 
-export default function UploadProgress({
-    stage,
-    document,
-    error,
-    onDone,
-}: UploadProgressProps) {
+export default function UploadProgress({ stage, document, error, onDone }: UploadProgressProps) {
     if (stage === "idle") return null;
 
     const currentIndex = stageOrder.indexOf(stage);
 
     return (
-        <div className="mt-4 rounded-lg border border-surface-300 bg-surface-200 p-4">
-            {/* Step indicators */}
+        <div className="mt-4 rounded-lg border border-surface-300 bg-surface-200/40 p-4">
             <div className="mb-4 flex items-center gap-2">
                 {stageOrder.map((s, i) => {
                     const isDone = i < currentIndex || stage === "done";
@@ -56,25 +49,22 @@ export default function UploadProgress({
                     return (
                         <div key={s} className="flex items-center gap-2">
                             <div
-                                className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-mono font-bold transition-all ${
+                                className={`flex h-5 w-5 items-center justify-center rounded-full font-mono text-xs font-bold transition-all ${
                                     isError
-                                        ? "bg-rose-500 text-white"
+                                        ? "bg-red-500 text-surface-900"
                                         : isDone
-                                          ? "bg-emerald-500 text-surface-0 font-bold"
+                                          ? "bg-emerald-500 text-surface-900"
                                           : isCurrent
-                                            ? "border-2 border-amber-400 bg-transparent text-amber-400"
+                                            ? "border-2 border-ember-400 bg-transparent text-ember-300"
                                             : "border border-surface-400 bg-transparent text-surface-500"
                                 }`}
                             >
                                 {isDone ? "✓" : i + 1}
                             </div>
-
                             {i < stageOrder.length - 1 && (
                                 <div
                                     className={`h-px w-4 ${
-                                        isDone
-                                            ? "bg-emerald-500/50"
-                                            : "bg-surface-400/40"
+                                        isDone ? "bg-emerald-500/50" : "bg-surface-400/40"
                                     }`}
                                 />
                             )}
@@ -84,9 +74,9 @@ export default function UploadProgress({
             </div>
 
             <p
-                className={`text-xs font-mono ${
+                className={`font-mono text-xs ${
                     stage === "error"
-                        ? "text-rose-400"
+                        ? "text-red-400"
                         : stage === "done"
                           ? "text-emerald-400"
                           : "text-surface-200"
@@ -97,30 +87,24 @@ export default function UploadProgress({
 
             {stage !== "done" && stage !== "error" && (
                 <div className="mt-2 flex items-center gap-2">
-                    <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-surface-300 border-t-amber-400" />
-                    <span className="text-xs font-mono text-surface-400">Processing stream...</span>
+                    <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-surface-300 border-t-ember-400" />
+                    <span className="font-mono text-xs text-surface-500">Processing stream…</span>
                 </div>
             )}
 
             {stage === "done" && document && (
                 <div className="mt-3">
-                    <p className="text-xs font-mono text-surface-400">
-                        <span className="font-semibold text-surface-200">
-                            {document.title}
-                        </span>{" "}
+                    <p className="font-mono text-xs text-surface-500">
+                        <span className="font-semibold text-surface-200">{document.title}</span>{" "}
                         ingested into evidentiary archive. Status:{" "}
-                        <span className="text-emerald-400 font-semibold uppercase">
+                        <span className="font-semibold uppercase text-emerald-400">
                             {document.status}
                         </span>
                     </p>
-
-                    <button
-                        type="button"
-                        onClick={onDone}
-                        className="mt-3 rounded-lg bg-amber-500 px-4 py-1.5 text-xs font-bold text-surface-0 hover:bg-amber-400 transition shadow"
-                    >
+                    <Button size="sm" className="mt-3" onClick={onDone}>
+                        <Icon name="check-circle" size={13} />
                         Acknowledge
-                    </button>
+                    </Button>
                 </div>
             )}
         </div>

@@ -1,18 +1,24 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-    variant?: "primary" | "ghost" | "danger";
+    variant?: "primary" | "ghost" | "danger" | "quiet";
     size?: "sm" | "md";
     children: ReactNode;
 }
 
+/**
+ * Chrome is ember. Buttons are flat-ish with a hairline lit edge — physical
+ * switch, not a glowing SaaS CTA.
+ */
 const variantClasses = {
     primary:
-        "bg-amber-500 text-surface-0 font-bold hover:bg-amber-400 disabled:opacity-50 shadow-sm transition",
+        "bg-ember-500 text-surface-900 font-semibold hover:bg-ember-400 active:bg-ember-600 shadow-[inset_0_1px_0_0_rgba(246,242,237,0.18)] disabled:opacity-40",
     ghost:
-        "border border-surface-300 bg-surface-200 text-surface-300 hover:bg-surface-300 hover:text-surface-900 disabled:opacity-50 transition",
+        "border border-surface-300 bg-surface-200/70 text-surface-700 hover:bg-surface-300 hover:text-surface-900 disabled:opacity-40",
+    quiet:
+        "text-surface-500 hover:text-surface-900 hover:bg-surface-200/70 disabled:opacity-40",
     danger:
-        "bg-rose-600 text-white hover:bg-rose-500 disabled:opacity-50 transition",
+        "bg-red-600 text-surface-900 hover:bg-red-500 disabled:opacity-40",
 };
 
 const sizeClasses = {
@@ -30,7 +36,7 @@ export default function Button({
     return (
         <button
             type="button"
-            className={`inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold transition ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
+            className={`inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg transition-all duration-150 ease-out disabled:cursor-not-allowed ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
             {...props}
         >
             {children}

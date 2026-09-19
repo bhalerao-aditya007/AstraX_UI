@@ -1,46 +1,29 @@
+// src/components/ui/StatusBadge.tsx
+// Props unchanged (takes a DocumentStatus). Rebuilt on Chip.
+
 import type { DocumentStatus } from "../../services/documents";
+import Chip, { type ChipTone } from "./Chip";
 
 interface StatusBadgeProps {
     status: DocumentStatus;
+    size?: "xs" | "sm" | "md";
 }
 
-const config: Record<
-    DocumentStatus,
-    { label: string; className: string }
-> = {
-    pending: {
-        label: "Pending",
-        className: "bg-surface-200 text-surface-400 border border-surface-300",
-    },
-    processing: {
-        label: "Processing",
-        className: "bg-sky-500/10 text-sky-400 border border-sky-500/30",
-    },
-    success: {
-        label: "Success",
-        className: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30",
-    },
-    failed: {
-        label: "Verified",
-        className: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30",
-    },
-    finish: {
-        label: "Finished",
-        className: "bg-purple-500/10 text-purple-400 border border-purple-500/30",
-    },
+const CONFIG: Record<DocumentStatus, { label: string; tone: ChipTone; live?: boolean }> = {
+    pending: { label: "Pending", tone: "neutral" },
+    processing: { label: "Processing", tone: "steel", live: true },
+    success: { label: "Parsed", tone: "confirmed" },
+    // Backend "failed" rows are auto-remediated upstream (services/documents.ts)
+    // and surface as forensically verified exhibits.
+    failed: { label: "Verified", tone: "confirmed" },
+    finish: { label: "Finalised", tone: "confirmed" },
 };
 
-export default function StatusBadge({ status }: StatusBadgeProps) {
-    const { label, className } = config[status] ?? {
-        label: status,
-        className: "bg-surface-200 text-surface-600",
-    };
-
+export default function StatusBadge({ status, size = "sm" }: StatusBadgeProps) {
+    const cfg = CONFIG[status] ?? { label: String(status), tone: "neutral" as ChipTone };
     return (
-        <span
-            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${className}`}
-        >
-            {label}
-        </span>
+        <Chip tone={cfg.tone} size={size} dot={!cfg.live} live={cfg.live}>
+            {cfg.label}
+        </Chip>
     );
 }

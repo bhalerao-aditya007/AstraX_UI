@@ -1,9 +1,14 @@
 // src/pages/ExtractionSummary.tsx
+// Data synthesis logic (documents → fact sheet) is entirely unchanged.
+
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/layout/Navbar";
 import FactSheet from "../components/summary/FactSheet";
 import Icon from "../components/ui/Icon";
+import EmptyState from "../components/ui/EmptyState";
+import { Kicker } from "../components/ui/Chip";
+import { Reveal } from "../components/motion";
 import { useCasesStore } from "../store/casesStore";
 import { getDocuments, type Document } from "../services/documents";
 import { triggerHistoricalAnalysis } from "../services/analytics";
@@ -21,9 +26,7 @@ export default function ExtractionSummary() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (cases.length === 0) {
-            fetchCases();
-        }
+        if (cases.length === 0) fetchCases();
     }, [cases.length, fetchCases]);
 
     const currentCase = cases.find((c) => c.id === caseId) || {
@@ -42,25 +45,20 @@ export default function ExtractionSummary() {
             setError(null);
 
             try {
-                // 1. Fetch real documents for this case
                 const docs = await getDocuments(caseId).catch(() => []);
-                if (isMounted) {
-                    setDocuments(docs);
-                }
+                if (isMounted) setDocuments(docs);
 
-                // 2. Fetch analysis report if available
                 let analysisReport = null;
                 try {
                     analysisReport = await triggerHistoricalAnalysis(caseId);
                 } catch {
-                    // Backend analysis may fail if models are not configured or empty
+                    // may fail if models are unconfigured / empty
                 }
 
                 if (isMounted) {
                     if (analysisReport?.fact_sheet) {
                         setFactData(analysisReport.fact_sheet);
                     } else {
-                        // Dynamically synthesize fact sheet from actual document extractions
                         const whoList: FactSheetData["who"] = [];
                         const whatList: FactSheetData["what"] = [];
                         const whenList: FactSheetData["when"] = [];
@@ -69,16 +67,14 @@ export default function ExtractionSummary() {
 
                         docs.forEach((doc, idx) => {
                             const ext = (doc.extracted_information as any) || {};
-
-                            // Modality mapping
                             const modality =
                                 doc.document_type === "video"
                                     ? "video_cctv"
                                     : doc.document_type === "voice"
-                                    ? "audio"
-                                    : doc.document_type === "image"
-                                    ? "scanned_doc"
-                                    : "digital_text";
+                                      ? "audio"
+                                      : doc.document_type === "image"
+                                        ? "scanned_doc"
+                                        : "digital_text";
 
                             evidenceList.push({
                                 id: doc.id,
@@ -88,15 +84,14 @@ export default function ExtractionSummary() {
                                     doc.status === "finish" || doc.status === "success"
                                         ? "parsed"
                                         : doc.status === "failed"
-                                        ? "failed"
-                                        : "partial",
+                                          ? "failed"
+                                          : "partial",
                                 confidence: ext.confidence ? Number(ext.confidence) : 0.95,
                                 note: ext.transcribed_text
                                     ? `Extracted: ${String(ext.transcribed_text).slice(0, 60)}...`
                                     : `Status: ${doc.status}`,
                             });
 
-                            // Extract accused
                             if (Array.isArray(ext.accused)) {
                                 ext.accused.forEach((acc: any, aIdx: number) => {
                                     if (acc.name) {
@@ -115,7 +110,6 @@ export default function ExtractionSummary() {
                                 });
                             }
 
-                            // Extract complainant
                             if (ext.complainant?.name) {
                                 whoList.push({
                                     id: `comp-${idx}`,
@@ -129,7 +123,6 @@ export default function ExtractionSummary() {
                                 });
                             }
 
-                            // Extract statutory acts and sections
                             if (Array.isArray(ext.acts_and_sections)) {
                                 ext.acts_and_sections.forEach((sec: any) => {
                                     whatList.push({
@@ -137,38 +130,27 @@ export default function ExtractionSummary() {
                                         statuteName: "Statutory Charge",
                                         description: ext.narrative || "Recorded from FIR extraction.",
                                         applicableTo: ext.accused?.[0]?.name || "Accused",
-                                        citation: {
-                                            documentTitle: doc.title,
-                                            confidenceScore: 0.95,
-                                        },
+                                        citation: { documentTitle: doc.title, confidenceScore: 0.95 },
                                     });
                                 });
                             }
 
-                            // Extract temporal data
                             if (ext.incident_datetime) {
                                 whenList.push({
                                     timestamp: ext.incident_datetime,
                                     event: ext.narrative || "Incident occurred",
                                     location: ext.police_station || "Jurisdiction",
-                                    citation: {
-                                        documentTitle: doc.title,
-                                        confidenceScore: 0.92,
-                                    },
+                                    citation: { documentTitle: doc.title, confidenceScore: 0.92 },
                                 });
                             }
 
-                            // Extract geospatial data
                             if (ext.police_station || ext.district) {
                                 whereList.push({
                                     locationName: `${ext.police_station || ""}, ${ext.district || ""}`.replace(/^, |, $/g, ""),
                                     jurisdiction: ext.district || "State Police",
                                     significance: "Reporting Police Station",
-                                    coordinates: [28.6139, 77.2090],
-                                    citation: {
-                                        documentTitle: doc.title,
-                                        confidenceScore: 0.9,
-                                    },
+                                    coordinates: [28.6139, 77.209],
+                                    citation: { documentTitle: doc.title, confidenceScore: 0.9 },
                                 });
                             }
                         });
@@ -189,13 +171,9 @@ export default function ExtractionSummary() {
                     }
                 }
             } catch (err: any) {
-                if (isMounted) {
-                    setError(err?.message || "Failed to load extraction summary");
-                }
+                if (isMounted) setError(err?.message || "Failed to load extraction summary");
             } finally {
-                if (isMounted) {
-                    setIsLoading(false);
-                }
+                if (isMounted) setIsLoading(false);
             }
         }
 
@@ -214,93 +192,81 @@ export default function ExtractionSummary() {
             factData.evidence.length > 0);
 
     return (
-        <div className="min-h-screen bg-surface-0 flex flex-col font-sans">
+        <div className="flex min-h-screen flex-col bg-surface-0">
             <Navbar />
+            <div className="bg-tactical-grid pointer-events-none absolute inset-0 opacity-20" />
 
-            {/* Tactical Grid Background */}
-            <div className="absolute inset-0 bg-tactical-grid opacity-20 pointer-events-none" />
-
-            {/* Main Content */}
-            <main className="relative z-10 flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6">
-                {/* Navigation Breadcrumb */}
-                <div className="flex items-center justify-between">
+            <main className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+                <Reveal className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <button
                             type="button"
                             onClick={() => navigate("/intake")}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-surface-300 bg-surface-100 px-3 py-1.5 text-xs font-semibold text-surface-400 hover:text-surface-200 hover:bg-surface-200 transition-colors"
+                            className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-surface-300 bg-surface-100 px-3 py-1.5 text-xs font-semibold text-surface-500 transition-colors hover:text-surface-900"
                         >
                             <Icon name="arrow-left" size={14} />
-                            <span>Back to Evidence Intake</span>
+                            <span>Back to evidence intake</span>
                         </button>
-                        <span className="text-surface-500 text-xs">/</span>
-                        <Link
-                            to="/dashboard"
-                            className="text-xs text-surface-400 hover:text-surface-200 transition-colors"
-                        >
+                        <span className="text-xs text-surface-500">/</span>
+                        <Link to="/dashboard" className="text-xs text-surface-500 transition-colors hover:text-surface-900">
                             Case Directory
                         </Link>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <span
-                            className={`inline-flex h-2 w-2 rounded-full ${
-                                isLoading ? "bg-amber-400 animate-ping" : "bg-emerald-400 animate-pulse"
-                            }`}
-                        />
-                        <span className="text-xs font-mono text-emerald-400">
-                            {isLoading ? "Synchronizing Evidence..." : "Live Case Ingestion Verified"}
-                        </span>
-                    </div>
-                </div>
+                    <span
+                        className={`inline-flex items-center gap-2 font-mono text-xs ${
+                            isLoading ? "text-amber-300" : "text-emerald-300"
+                        }`}
+                    >
+                        <span className={`h-2 w-2 rounded-full ${isLoading ? "animate-ping bg-amber-400" : "animate-pulse bg-emerald-400"}`} />
+                        {isLoading ? "Synchronising evidence…" : "Live case ingestion verified"}
+                    </span>
+                </Reveal>
 
                 {isLoading ? (
-                    <div className="rounded-xl border border-surface-300 bg-surface-100 p-12 text-center flex flex-col items-center justify-center gap-4 shadow-sm">
-                        <div className="w-10 h-10 border-2 border-insignia-500 border-t-transparent rounded-full animate-spin" />
-                        <h3 className="text-sm font-mono uppercase tracking-wider text-surface-800">
-                            Extracting Multi-Modal Entities...
-                        </h3>
-                        <p className="text-xs text-surface-500 max-w-md">
-                            Running OCR, ANPR, Object Detection, and NER adapters across ingested files.
+                    <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-surface-300 bg-surface-100 p-12 text-center shadow-sm">
+                        <div className="h-10 w-10 animate-spin rounded-full border-2 border-ember-500 border-t-transparent" />
+                        <Kicker tone="ember">Extracting multi-modal entities…</Kicker>
+                        <p className="max-w-md text-xs text-surface-500">
+                            Running OCR, ANPR, object detection, and NER adapters across ingested
+                            files.
                         </p>
                     </div>
                 ) : error ? (
-                    <div className="rounded-xl border border-red-500/30 bg-red-950/20 p-8 text-center flex flex-col items-center justify-center gap-3 shadow-sm">
-                        <Icon name="alert-triangle" size={24} className="text-red-400" />
-                        <h3 className="text-sm font-bold text-red-300">Extraction Error</h3>
-                        <p className="text-xs text-surface-400 max-w-md">{error}</p>
-                        <button
-                            type="button"
-                            onClick={() => window.location.reload()}
-                            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-red-500/40 bg-red-950/40 px-3 py-1.5 text-xs font-semibold text-red-300 hover:bg-red-900/40 transition-colors"
-                        >
-                            Retry Extraction
-                        </button>
-                    </div>
-                ) : !hasAnyExtractedData ? (
-                    <div className="rounded-xl border border-surface-300 bg-surface-100 p-12 text-center flex flex-col items-center justify-center gap-4 shadow-sm">
-                        <Icon name="file-text" size={32} className="text-surface-400" />
-                        <h3 className="text-sm font-bold text-surface-900">No Extracted Data Available</h3>
-                        <p className="text-xs text-surface-500 max-w-md">
-                            No evidence documents have completed processing for this case yet. Ingest FIRs,
-                            recordings, or CCTV media via Evidence Intake to trigger automated extraction.
-                        </p>
-                        <button
-                            type="button"
-                            onClick={() => navigate("/intake")}
-                            className="mt-2 inline-flex items-center gap-2 rounded-lg bg-insignia-600 px-4 py-2 text-xs font-semibold text-white hover:bg-insignia-500 transition-colors"
-                        >
-                            <Icon name="upload" size={14} />
-                            <span>Go to Evidence Intake</span>
-                        </button>
-                    </div>
-                ) : (
-                    /* The 7-Section Fact Sheet */
-                    <FactSheet
-                        data={factData!}
-                        caseId={currentCase.id}
-                        isEmbedded={false}
+                    <EmptyState
+                        tone="error"
+                        icon="alert-triangle"
+                        title="Extraction error"
+                        body={error}
+                        stamp="retry required"
+                        action={
+                            <button
+                                type="button"
+                                onClick={() => window.location.reload()}
+                                className="cursor-pointer rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-300 transition-colors hover:bg-red-500/20"
+                            >
+                                Retry extraction
+                            </button>
+                        }
                     />
+                ) : !hasAnyExtractedData ? (
+                    <EmptyState
+                        icon="file-text"
+                        title="No extracted data available"
+                        body="No evidence documents have completed processing for this case yet. Ingest FIRs, recordings, or CCTV media via Evidence Intake to trigger automated extraction."
+                        stamp="0 exhibits parsed"
+                        action={
+                            <Link
+                                to="/intake"
+                                className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-ember-500 px-4 py-2 text-xs font-semibold text-surface-900 shadow-[inset_0_1px_0_0_rgba(246,242,237,0.18)] transition-colors hover:bg-ember-400"
+                            >
+                                <Icon name="upload" size={14} />
+                                <span>Go to evidence intake</span>
+                            </Link>
+                        }
+                    />
+                ) : (
+                    <FactSheet data={factData!} caseId={currentCase.id} isEmbedded={false} />
                 )}
             </main>
         </div>

@@ -1,14 +1,15 @@
-import { useRef, useState } from "react";
+// src/components/upload/UploadDocument.tsx
+// Upload flow, stages and service calls unchanged — chrome rebuilt on Modal.
 
-import {
-    initiateUpload,
-    uploadToStorage,
-    confirmUpload,
-} from "../../services/upload";
+import { useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+import { initiateUpload, uploadToStorage, confirmUpload } from "../../services/upload";
 import type { Document, DocumentType } from "../../services/documents";
 
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
+import Icon from "../ui/Icon";
 import UploadProgress from "./UploadProgress";
 
 type UploadStage =
@@ -33,13 +34,7 @@ interface UploadDocumentProps {
     onClose: () => void;
 }
 
-import { useNavigate } from "react-router-dom";
-
-export default function UploadDocument({
-    caseId,
-    onUploaded,
-    onClose,
-}: UploadDocumentProps) {
+export default function UploadDocument({ caseId, onUploaded, onClose }: UploadDocumentProps) {
     const navigate = useNavigate();
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
@@ -51,14 +46,11 @@ export default function UploadDocument({
     const [error, setError] = useState<string | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
-
     const isUploading = stage !== "idle" && stage !== "done" && stage !== "error";
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-
         if (!file || !title.trim()) return;
-
         setError(null);
 
         try {
@@ -94,16 +86,11 @@ export default function UploadDocument({
 
             await new Promise((r) => setTimeout(r, 800));
             setStage("done");
-            
-            // Redirect to case after 2 seconds
-            setTimeout(() => {
-                navigate(`/cases/${caseId}`);
-            }, 2000);
+
+            setTimeout(() => navigate(`/cases/${caseId}`), 2000);
         } catch (err) {
             setStage("error");
-            setError(
-                err instanceof Error ? err.message : "Upload failed"
-            );
+            setError(err instanceof Error ? err.message : "Upload failed");
         }
     }
 
@@ -112,11 +99,18 @@ export default function UploadDocument({
     }
 
     return (
-        <Modal title="Upload Document" onClose={isUploading ? () => {} : onClose}>
+        <Modal
+            kicker="Evidence intake"
+            title="Upload document"
+            onClose={isUploading ? () => {} : onClose}
+        >
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                    <label htmlFor="doc-title" className="mb-1.5 block text-sm font-medium text-surface-700">
-                        Title <span className="text-red-500">*</span>
+                    <label
+                        htmlFor="doc-title"
+                        className="mb-1.5 block font-mono text-[10px] uppercase tracking-wider text-surface-500"
+                    >
+                        Title <span className="text-red-400">*</span>
                     </label>
                     <input
                         id="doc-title"
@@ -125,12 +119,15 @@ export default function UploadDocument({
                         onChange={(e) => setTitle(e.target.value)}
                         placeholder="e.g. Police Incident Report"
                         disabled={isUploading}
-                        className="w-full rounded-lg border border-surface-300 bg-surface-200 px-3 py-2 text-sm text-surface-900 placeholder-surface-500 outline-none focus:border-amber-500/80 focus:ring-2 focus:ring-amber-500/20 disabled:opacity-50"
+                        className="w-full rounded-lg border border-surface-300 bg-surface-0/70 px-3 py-2 text-sm text-surface-900 outline-none transition placeholder:text-surface-500 focus:border-ember-500/70 focus:ring-2 focus:ring-ember-500/15 disabled:opacity-50"
                     />
                 </div>
 
                 <div>
-                    <label htmlFor="doc-description" className="mb-1.5 block text-sm font-medium text-surface-700">
+                    <label
+                        htmlFor="doc-description"
+                        className="mb-1.5 block font-mono text-[10px] uppercase tracking-wider text-surface-500"
+                    >
                         Description
                     </label>
                     <textarea
@@ -140,46 +137,57 @@ export default function UploadDocument({
                         placeholder="Brief description of the document"
                         rows={2}
                         disabled={isUploading}
-                        className="w-full resize-none rounded-lg border border-surface-300 bg-surface-200 px-3 py-2 text-sm text-surface-900 placeholder-surface-500 outline-none focus:border-amber-500/80 focus:ring-2 focus:ring-amber-500/20 disabled:opacity-50"
+                        className="w-full resize-none rounded-lg border border-surface-300 bg-surface-0/70 px-3 py-2 text-sm text-surface-900 outline-none transition placeholder:text-surface-500 focus:border-ember-500/70 focus:ring-2 focus:ring-ember-500/15 disabled:opacity-50"
                     />
                 </div>
 
                 <div>
-                    <label htmlFor="doc-type" className="mb-1.5 block text-sm font-medium text-surface-700">
-                        Document Type <span className="text-rose-500">*</span>
+                    <label
+                        htmlFor="doc-type"
+                        className="mb-1.5 block font-mono text-[10px] uppercase tracking-wider text-surface-500"
+                    >
+                        Document type <span className="text-red-400">*</span>
                     </label>
                     <select
                         id="doc-type"
                         value={documentType}
                         onChange={(e) => setDocumentType(e.target.value as DocumentType)}
                         disabled={isUploading}
-                        className="w-full rounded-lg border border-surface-300 bg-surface-200 px-3 py-2 text-sm text-surface-900 outline-none focus:border-amber-500/80 focus:ring-2 focus:ring-amber-500/20 disabled:opacity-50"
+                        className="w-full cursor-pointer rounded-lg border border-surface-300 bg-surface-0/70 px-3 py-2 text-sm text-surface-900 outline-none transition focus:border-ember-500/70 focus:ring-2 focus:ring-ember-500/15 disabled:opacity-50"
                     >
                         {DOCUMENT_TYPES.map((dt) => (
-                            <option key={dt.value} value={dt.value} className="bg-surface-100 text-surface-900">{dt.label}</option>
+                            <option key={dt.value} value={dt.value} className="bg-surface-100 text-surface-900">
+                                {dt.label}
+                            </option>
                         ))}
                     </select>
                 </div>
 
                 <div>
-                    <label className="mb-1.5 block text-sm font-medium text-surface-700">
-                        File <span className="text-rose-500">*</span>
+                    <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-wider text-surface-500">
+                        File <span className="text-red-400">*</span>
                     </label>
                     <div
                         onClick={() => !isUploading && fileInputRef.current?.click()}
-                        className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-surface-300 bg-surface-200/50 px-4 py-6 text-center transition hover:border-amber-400/50 hover:bg-amber-500/5 ${isUploading ? "cursor-not-allowed opacity-50" : ""}`}
+                        className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-surface-300 bg-surface-200/40 px-4 py-6 text-center transition hover:border-ember-500/50 hover:bg-ember-500/5 ${
+                            isUploading ? "cursor-not-allowed opacity-50" : ""
+                        }`}
                     >
                         {file ? (
                             <>
-                                <p className="text-sm font-medium text-surface-200 font-mono">{file.name}</p>
-                                <p className="mt-0.5 text-xs text-surface-400 font-mono">{(file.size / 1024).toFixed(1)} KB</p>
+                                <p className="font-mono text-sm font-medium text-surface-200">
+                                    {file.name}
+                                </p>
+                                <p className="mt-0.5 font-mono text-xs text-surface-500">
+                                    {(file.size / 1024).toFixed(1)} KB
+                                </p>
                             </>
                         ) : (
                             <>
-                                <svg className="mb-2 h-6 w-6 text-surface-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-                                </svg>
-                                <p className="text-xs font-mono text-surface-400">Click to select evidentiary file</p>
+                                <Icon name="upload" size={22} className="mb-2 text-surface-500" />
+                                <p className="font-mono text-xs text-surface-500">
+                                    Click to select evidentiary file
+                                </p>
                             </>
                         )}
                     </div>
@@ -195,15 +203,23 @@ export default function UploadDocument({
 
                 {stage === "idle" && (
                     <div className="flex justify-end gap-2 pt-1">
-                        <Button variant="ghost" size="sm" type="button" onClick={onClose}>Cancel</Button>
-                        <Button variant="primary" size="sm" type="submit" disabled={!file || !title.trim()}>Upload</Button>
+                        <Button variant="ghost" size="sm" type="button" onClick={onClose}>
+                            Cancel
+                        </Button>
+                        <Button variant="primary" size="sm" type="submit" disabled={!file || !title.trim()}>
+                            Upload
+                        </Button>
                     </div>
                 )}
 
                 {stage === "error" && (
                     <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" type="button" onClick={onClose}>Close</Button>
-                        <Button variant="primary" size="sm" type="submit">Retry</Button>
+                        <Button variant="ghost" size="sm" type="button" onClick={onClose}>
+                            Close
+                        </Button>
+                        <Button variant="primary" size="sm" type="submit">
+                            Retry
+                        </Button>
                     </div>
                 )}
             </form>

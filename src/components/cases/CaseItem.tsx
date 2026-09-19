@@ -1,5 +1,9 @@
 // src/components/cases/CaseItem.tsx
+// Props unchanged. Reads as a physical case tab: ember spine when active,
+// mono case id, track glyph, quiet actions that only surface on hover.
+
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useWorkspaceStore } from "../../store/workspaceStore";
 import type { Case } from "../../services/cases";
 import Icon from "../ui/Icon";
@@ -20,74 +24,85 @@ export default function CaseItem({ caseItem, onEdit, onDelete }: CaseItemProps) 
 
     return (
         <div
-            className={`group relative flex items-center rounded-xl px-3 py-2.5 text-xs transition-all cursor-pointer font-sans border ${
-                isSelected
-                    ? "bg-insignia-500/15 border-insignia-500/40 text-surface-900 font-semibold shadow-sm"
-                    : "border-transparent text-surface-400 hover:text-surface-200 hover:bg-surface-200/50"
-            }`}
             onClick={() => selectCase(caseItem.id)}
+            className={`group relative flex cursor-pointer items-center rounded-lg border px-3 py-2.5 text-xs transition-all ${
+                isSelected
+                    ? "tag-spine border-ember-500/35 bg-ember-500/10"
+                    : "border-transparent hover:border-surface-300 hover:bg-surface-200/50"
+            }`}
         >
-            {/* Left Accent Bar */}
             {isSelected && (
-                <div className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r bg-insignia-400" />
+                <motion.span
+                    layoutId="case-active-glow"
+                    className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-inset ring-ember-500/20"
+                    transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                />
             )}
 
-            {/* Case Icon Avatar */}
             <div
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-mono font-bold ${
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${
                     isSelected
-                        ? "bg-insignia-500/20 text-insignia-400 border border-insignia-500/30"
-                        : "bg-surface-200 text-surface-400"
+                        ? "border-ember-500/40 bg-ember-500/15 text-ember-300"
+                        : "border-surface-300 bg-surface-200 text-surface-500"
                 }`}
             >
                 <Icon name={isTrack2 ? "network-graph" : "scale-justice"} size={13} />
             </div>
 
             <div className="ml-2.5 min-w-0 flex-1">
-                <div className="truncate text-surface-900 font-medium">{caseItem.name}</div>
-                <div className="flex items-center gap-1.5 text-[10px] font-mono text-surface-500 mt-0.5">
-                    <span className={isTrack2 ? "text-insignia-400" : "text-surface-400"}>
-                        Track {caseItem.track ?? 2}
+                <div
+                    className={`truncate font-medium ${
+                        isSelected ? "text-surface-900" : "text-surface-700 group-hover:text-surface-900"
+                    }`}
+                >
+                    {caseItem.name}
+                </div>
+                <div className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] text-surface-500">
+                    <span className={isTrack2 ? "text-ember-300/90" : "text-surface-500"}>
+                        TRACK {caseItem.track ?? 2}
                     </span>
-                    <span>•</span>
+                    <span className="opacity-40">/</span>
                     <span>{new Date(caseItem.created_at).toLocaleDateString()}</span>
                 </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className={`flex shrink-0 items-center gap-1 ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+            <div
+                className={`flex shrink-0 items-center gap-0.5 transition-opacity ${
+                    isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                }`}
+            >
                 <button
                     type="button"
+                    title="Open case analysis workspace"
                     onClick={(e) => {
                         e.stopPropagation();
                         navigate(`/cases/${caseItem.id}`);
                     }}
-                    title="Open Case Analysis Workspace"
-                    className="flex h-6 w-6 items-center justify-center rounded text-insignia-400 hover:bg-insignia-500/20 transition-colors"
+                    className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-ember-300 transition-colors hover:bg-ember-500/20"
                 >
-                    <Icon name="external-link" size={13} />
+                    <Icon name="external-link" size={12} />
                 </button>
                 <button
                     type="button"
+                    title="Rename case"
                     onClick={(e) => {
                         e.stopPropagation();
                         onEdit(caseItem);
                     }}
-                    title="Edit Case Name"
-                    className="flex h-6 w-6 items-center justify-center rounded text-surface-400 hover:bg-surface-200 hover:text-surface-200 transition-colors"
+                    className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-surface-500 transition-colors hover:bg-surface-200 hover:text-surface-800"
                 >
-                    <Icon name="edit" size={13} />
+                    <Icon name="edit" size={12} />
                 </button>
                 <button
                     type="button"
+                    title="Delete case"
                     onClick={(e) => {
                         e.stopPropagation();
                         onDelete(caseItem);
                     }}
-                    title="Delete Case"
-                    className="flex h-6 w-6 items-center justify-center rounded text-surface-400 hover:bg-red-950/50 hover:text-red-400 transition-colors"
+                    className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-surface-500 transition-colors hover:bg-red-500/15 hover:text-red-400"
                 >
-                    <Icon name="trash" size={13} />
+                    <Icon name="trash" size={12} />
                 </button>
             </div>
         </div>

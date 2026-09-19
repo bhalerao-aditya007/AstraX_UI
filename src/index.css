@@ -1,101 +1,509 @@
 @import "tailwindcss";
 
+/* =========================================================================
+   AstraX — "Case File Noir"
+   Warm graphite base · ember (rust/terracotta) authority · steel (slate-blue)
+   for machine/data. Dark mode only, by product decision (DESIGN.md §1).
+
+   Token NAMES are preserved from the previous theme (surface-*, insignia-*,
+   brand-*) so that every existing className keeps working; only the VALUES
+   changed. `ember-*` and `steel-*` are added as the semantically-correct
+   aliases for new code.
+   ========================================================================= */
+
 @theme {
-  --font-sans: 'Nunito', 'Ranade', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Ranade', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 
-  --color-brand-50: #eff6ff;
-  --color-brand-100: #dbeafe;
-  --color-brand-200: #bfdbfe;
-  --color-brand-300: #93c5fd;
-  --color-brand-400: #60a5fa;
-  --color-brand-500: #3b82f6;
-  --color-brand-600: #2563eb;
-  --color-brand-700: #1d4ed8;
-  --color-brand-800: #1e40af;
-  --color-brand-900: #1e3a8a;
+  /* ── Warm graphite surface ramp (records room, not a black void) ─────── */
+  --color-surface-0: #0e0d0c;
+  --color-surface-50: #141312;
+  --color-surface-100: #1a1817;
+  --color-surface-200: #232120;
+  --color-surface-300: #302d2b;
+  --color-surface-400: #4a4644;
+  --color-surface-500: #6e6763;
+  --color-surface-600: #9a928c;
+  --color-surface-700: #c4bcb5;
+  --color-surface-800: #e3dcd5;
+  --color-surface-900: #f6f2ed;
 
-  /* Official Gold / Amber Insignia */
-  --color-insignia-50: #fbf7ee;
-  --color-insignia-100: #f5eed3;
-  --color-insignia-200: #ebdc9f;
-  --color-insignia-300: #dec469;
-  --color-insignia-400: #d4af37;
-  --color-insignia-500: #c9a227;
-  --color-insignia-600: #aa831b;
-  --color-insignia-700: #886518;
-  --color-insignia-800: #715219;
-  --color-insignia-900: #604419;
+  /* ── Primary authority accent: EMBER (replaces the banned gold) ──────── */
+  --color-ember-50: #fbf1ec;
+  --color-ember-100: #f5ddd1;
+  --color-ember-200: #e7b394;
+  --color-ember-300: #d89873;
+  --color-ember-400: #c2764f;
+  --color-ember-500: #a85b3a;
+  --color-ember-600: #8a4a2f;
+  --color-ember-700: #6a3624;
+  --color-ember-800: #4c2718;
+  --color-ember-900: #341b11;
 
-  /* Inverted Dark Ops Room Surface Ramp */
-  --color-surface-0: #0b0f14;    /* darkest canvas */
-  --color-surface-50: #10151c;   /* base panel bg */
-  --color-surface-100: #161c25;  /* card bg */
-  --color-surface-200: #202936;  /* elevated card / secondary container */
-  --color-surface-300: #2d3848;  /* subtle borders */
-  --color-surface-400: #475569;  /* strong borders / muted icons */
-  --color-surface-500: #64748b;  /* secondary text */
-  --color-surface-600: #94a3b8;  /* body text */
-  --color-surface-700: #cbd5e1;  /* bright text / labels */
-  --color-surface-800: #e2e8f0;  /* headings */
-  --color-surface-900: #f8fafc;  /* near-white highlights */
+  /* Legacy alias — same values, keeps existing `insignia-*` classes alive */
+  --color-insignia-50: #fbf1ec;
+  --color-insignia-100: #f5ddd1;
+  --color-insignia-200: #e7b394;
+  --color-insignia-300: #d89873;
+  --color-insignia-400: #c2764f;
+  --color-insignia-500: #a85b3a;
+  --color-insignia-600: #8a4a2f;
+  --color-insignia-700: #6a3624;
+  --color-insignia-800: #4c2718;
+  --color-insignia-900: #341b11;
+
+  /* ── Secondary: STEEL (machine / data / technical channel) ───────────── */
+  --color-steel-50: #eef3f8;
+  --color-steel-100: #d6e2ee;
+  --color-steel-200: #b3cde0;
+  --color-steel-300: #85a6c4;
+  --color-steel-400: #6d95b8;
+  --color-steel-500: #5f86aa;
+  --color-steel-600: #46698b;
+  --color-steel-700: #35526e;
+  --color-steel-800: #263c50;
+  --color-steel-900: #1b2733;
+
+  /* Legacy alias — `brand-*` now points at steel, not corporate SaaS blue */
+  --color-brand-50: #eef3f8;
+  --color-brand-100: #d6e2ee;
+  --color-brand-200: #b3cde0;
+  --color-brand-300: #85a6c4;
+  --color-brand-400: #6d95b8;
+  --color-brand-500: #5f86aa;
+  --color-brand-600: #46698b;
+  --color-brand-700: #35526e;
+  --color-brand-800: #263c50;
+  --color-brand-900: #1b2733;
+
+  /* ── Semantic contract (DESIGN.md §3) — meanings unchanged, hues
+        desaturated so they sit inside the warm base. These override
+        Tailwind's stock scales so that every pre-existing
+        emerald/red/rose/amber/purple utility in the codebase inherits the
+        correct, on-brand semantic colour without a per-file rewrite. ───── */
+
+  /* confirmed / evidentiary */
+  --color-emerald-300: #9ed7b8;
+  --color-emerald-400: #74be97;
+  --color-emerald-500: #4e9e75;
+  --color-emerald-600: #3f8964;
+  --color-emerald-700: #37744f;
+  --color-emerald-800: #2a5a3e;
+  --color-emerald-900: #1d3b2a;
+  --color-emerald-950: #12241a;
+
+  /* high risk / incident */
+  --color-red-300: #f4a8a4;
+  --color-red-400: #f08a85;
+  --color-red-500: #dc5a54;
+  --color-red-600: #c2453f;
+  --color-red-700: #a83b36;
+  --color-red-800: #7d2c29;
+  --color-red-900: #4f1d1b;
+  --color-red-950: #2c1211;
+  --color-rose-300: #f4a8a4;
+  --color-rose-400: #f08a85;
+  --color-rose-500: #dc5a54;
+  --color-rose-600: #c2453f;
+  --color-rose-700: #a83b36;
+
+  /* pattern alert / pending  (semantic amber only — never used as chrome) */
+  --color-amber-300: #e6c98a;
+  --color-amber-400: #deb05a;
+  --color-amber-500: #c4922f;
+  --color-amber-600: #a87c26;
+  --color-amber-700: #8f6a1f;
+  --color-amber-800: #6b4f18;
+  --color-amber-900: #453210;
+  --color-amber-950: #2a1f0a;
+
+  /* GNN hypothesis / predicted — always paired with a dashed treatment */
+  --color-purple-300: #c3b9f0;
+  --color-purple-400: #a99ce4;
+  --color-purple-500: #8776d1;
+  --color-purple-600: #6a58b8;
+  --color-purple-700: #564797;
+  --color-purple-800: #3f356e;
+  --color-purple-900: #2a2447;
+  --color-purple-950: #191530;
+
+  /* technical channel aliases used by existing markup */
+  --color-blue-300: #b3cde0;
+  --color-blue-400: #85a6c4;
+  --color-blue-500: #5f86aa;
+  --color-blue-600: #46698b;
+  --color-blue-700: #35526e;
+  --color-blue-900: #1b2733;
+  --color-blue-950: #141d26;
+  --color-cyan-400: #7fb3c4;
+  --color-cyan-600: #427a8e;
+  --color-sky-400: #85a6c4;
+  --color-sky-500: #5f86aa;
+
+  /* Radii — slightly tighter than before; Apple-HIG calm, not bubbly */
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.125rem;
 }
 
 @layer base {
-  *, ::before, ::after {
-    font-family: 'Nunito', 'Ranade', system-ui, -apple-system, sans-serif;
+  html {
+    color-scheme: dark;
+  }
+  *,
+  ::before,
+  ::after {
+    font-family: var(--font-sans);
   }
   body {
-    font-family: 'Nunito', 'Ranade', system-ui, -apple-system, sans-serif;
-    @apply antialiased bg-surface-0 text-surface-700 selection:bg-insignia-500/30 selection:text-white;
+    font-family: var(--font-sans);
+    @apply antialiased bg-surface-0 text-surface-700 selection:bg-ember-500/30 selection:text-surface-900;
+    /* Ambient records-room light: a single warm source, top-left, very low. */
+    background-image:
+      radial-gradient(1200px 700px at 12% -10%, rgba(168, 91, 58, 0.09), transparent 60%),
+      radial-gradient(900px 600px at 92% 0%, rgba(95, 134, 170, 0.06), transparent 60%);
+    background-attachment: fixed;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.015em;
+  }
+  /* Every ID, hash, coordinate, statute and confidence value is mono
+     (DESIGN.md §4) — enforced by the .font-mono utility used at call sites. */
+  .font-mono, code, pre, kbd {
+    font-family: var(--font-mono);
+    font-feature-settings: "ss01", "zero";
   }
 }
 
-/* Tactical Background Grid & Dot Matrix */
+/* =========================================================================
+   TEXTURES
+   Every texture is layered ON TOP of a gradient fallback, so a missing image
+   file degrades silently to a solid/gradient surface (see "Image Assets
+   Needed" in the handover notes). Never make layout depend on these.
+   ========================================================================= */
+
+:root {
+  --tex-paper: url("/textures/paper-grain.png");
+  --tex-cork: url("/textures/corkboard.png");
+  --tex-room: url("/textures/records-room.jpg");
+  --tex-map: url("/textures/map-terrain.jpg");
+  --tex-noise: url("/textures/noise.png");
+}
+
 .bg-tactical-grid {
-  background-image: 
-    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 32px 32px;
+  background-image:
+    linear-gradient(rgba(246, 242, 237, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(246, 242, 237, 0.035) 1px, transparent 1px);
+  background-size: 34px 34px;
 }
 
 .bg-tactical-dots {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
-  background-size: 24px 24px;
+  background-image: radial-gradient(rgba(246, 242, 237, 0.07) 1px, transparent 1px);
+  background-size: 26px 26px;
 }
 
 .bg-tactical-radar {
-  background: radial-gradient(circle at 50% 50%, rgba(201, 162, 39, 0.04) 0%, rgba(11, 15, 20, 0.95) 75%);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(168, 91, 58, 0.05) 0%, rgba(14, 13, 12, 0.96) 72%);
 }
 
-/* Monospace Systematic Utility */
-.font-mono-system {
-  font-family: 'Ranade', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  letter-spacing: -0.02em;
+/* Paper grain for "document-like" reading surfaces (FactSheet, brief). */
+.bg-case-paper {
+  background-image: var(--tex-paper),
+    linear-gradient(180deg, rgba(35, 33, 32, 0.6) 0%, rgba(20, 19, 18, 0.6) 100%);
+  background-size: 512px 512px, auto;
+  background-blend-mode: overlay, normal;
+}
+
+/* Corkboard / evidence-wall surface for empty states. */
+.bg-evidence-wall {
+  background-image: var(--tex-cork),
+    linear-gradient(140deg, rgba(48, 45, 43, 0.5), rgba(20, 19, 18, 0.7));
+  background-size: 512px 512px, auto;
+  background-blend-mode: soft-light, normal;
+}
+
+/* Full-bleed records-room backdrop (Landing hero). */
+.bg-records-room {
+  background-image: var(--tex-room),
+    radial-gradient(900px 520px at 20% 10%, rgba(168, 91, 58, 0.16), transparent 62%),
+    linear-gradient(180deg, #141312 0%, #0e0d0c 100%);
+  background-size: cover, auto, auto;
+  background-position: center;
+}
+
+/* Tactical map plate (GeoLocationView). */
+.bg-map-plate {
+  background-image: var(--tex-map),
+    radial-gradient(760px 520px at 55% 45%, rgba(95, 134, 170, 0.10), transparent 70%),
+    linear-gradient(180deg, #141312, #0e0d0c);
+  background-size: cover, auto, auto;
+  background-position: center;
+}
+
+/* Film grain overlay — sits above content at very low opacity. */
+.grain-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: var(--tex-noise);
+  background-size: 256px 256px;
+  opacity: 0.045;
+  mix-blend-mode: overlay;
+}
+
+/* =========================================================================
+   SURFACES & CHROME
+   ========================================================================= */
+
+/* Frosted glass over the warm base — never over pure black. */
+.glass {
+  background: linear-gradient(
+    180deg,
+    rgba(35, 33, 32, 0.72) 0%,
+    rgba(26, 24, 23, 0.66) 100%
+  );
+  backdrop-filter: blur(16px) saturate(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
+  border: 1px solid rgba(48, 45, 43, 0.9);
+  box-shadow:
+    inset 0 1px 0 0 rgba(246, 242, 237, 0.05),
+    0 18px 40px -24px rgba(0, 0, 0, 0.9);
+}
+
+.glass-strong {
+  background: linear-gradient(180deg, rgba(26, 24, 23, 0.94), rgba(20, 19, 18, 0.92));
+  backdrop-filter: blur(24px) saturate(1.15);
+  -webkit-backdrop-filter: blur(24px) saturate(1.15);
+  border: 1px solid rgba(48, 45, 43, 0.95);
+}
+
+/* Hairline top highlight — the "lit edge" of a physical panel. */
+.lit-edge {
+  position: relative;
+}
+.lit-edge::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(246, 242, 237, 0.14),
+    transparent
+  );
+}
+
+/* Evidence-tag edge: a thin ember spine on the left of "active" material. */
+.tag-spine {
+  box-shadow: inset 2px 0 0 0 var(--color-ember-500);
+}
+
+/* Rotating conic border — reserved for THE single most important element on a
+   screen (active crime theory, critical open gap). Do not scatter this. */
+.conic-ring {
+  position: relative;
+  isolation: isolate;
+}
+.conic-ring::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--conic-angle, 0deg),
+    transparent 0deg,
+    rgba(168, 91, 58, 0.85) 40deg,
+    rgba(216, 152, 115, 0.5) 70deg,
+    transparent 130deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: conic-spin 6s linear infinite;
+  z-index: -1;
+}
+
+@property --conic-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes conic-spin {
+  to {
+    --conic-angle: 360deg;
+  }
+}
+
+/* Shine sweep across a card on hover (§4.7 adaptation — ember, not gold). */
+.shine-sweep {
+  position: relative;
+  overflow: hidden;
+}
+.shine-sweep::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgba(246, 242, 237, 0.07),
+    transparent
+  );
+  transition: left 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+.shine-sweep:hover::after {
+  left: 140%;
+}
+
+/* "Redacted → revealed" progressive-disclosure wipe. */
+.redacted {
+  position: relative;
+  color: transparent;
+  background: var(--color-surface-300);
+  border-radius: 2px;
+}
+.redacted[data-revealed="true"] {
+  color: inherit;
+  background: transparent;
+  animation: unredact 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes unredact {
+  from {
+    clip-path: inset(0 100% 0 0);
+    background: var(--color-surface-300);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+    background: transparent;
+  }
+}
+
+/* Hypothesis "unresolved" texture: never static, never solid. */
+.hypothesis-surface {
+  border-style: dashed;
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(135, 118, 209, 0.08) 0px,
+    rgba(135, 118, 209, 0.08) 2px,
+    transparent 2px,
+    transparent 7px
+  );
+  animation: hypo-breathe 4.5s ease-in-out infinite;
+}
+@keyframes hypo-breathe {
+  0%, 100% { border-color: rgba(135, 118, 209, 0.4); }
+  50% { border-color: rgba(135, 118, 209, 0.8); }
+}
+
+/* "Link confirmed" snap — used when a human confirms a hypothesis edge. */
+@keyframes link-snap {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(78, 158, 117, 0.55); }
+  45% { transform: scale(1.015); box-shadow: 0 0 0 10px rgba(78, 158, 117, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(78, 158, 117, 0); }
+}
+.link-snap {
+  animation: link-snap 0.6s cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+/* Live badge ring. */
+@keyframes live-ring {
+  0% { transform: scale(0.85); opacity: 0.85; }
+  70% { transform: scale(2.1); opacity: 0; }
+  100% { transform: scale(2.1); opacity: 0; }
+}
+.live-ring::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1px solid currentColor;
+  animation: live-ring 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+/* Text shimmer — hero moments only (two in the whole app). */
+.text-shimmer {
+  background: linear-gradient(
+    100deg,
+    var(--color-surface-800) 20%,
+    var(--color-ember-300) 42%,
+    var(--color-surface-900) 52%,
+    var(--color-surface-800) 72%
+  );
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer-pan 6.5s linear infinite;
+}
+@keyframes shimmer-pan {
+  to { background-position: -220% center; }
+}
+
+/* Self-drawing thread used by the Act navigation rail. */
+@keyframes thread-draw {
+  from { stroke-dashoffset: var(--thread-len, 400); }
+  to { stroke-dashoffset: 0; }
 }
 
 @keyframes marquee {
   0% { transform: translateX(0%); }
   100% { transform: translateX(-33.333%); }
 }
-
 .animate-marquee {
-  animation: marquee 45s linear infinite;
+  animation: marquee 52s linear infinite;
   display: flex;
   width: max-content;
 }
 
-/* Custom Tactical Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+.font-mono-system {
+  font-family: var(--font-mono);
+  letter-spacing: -0.01em;
 }
-::-webkit-scrollbar-track {
-  background: #0b0f14;
-}
+
+/* Scrollbar — thin, warm, unobtrusive. */
+::-webkit-scrollbar { width: 7px; height: 7px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: #202936;
-  border-radius: 4px;
+  background: #302d2b;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: #2d3848;
+::-webkit-scrollbar-thumb:hover { background: #4a4644; background-clip: padding-box; }
+
+/* =========================================================================
+   REDUCED MOTION — global kill switch for ambient motion.
+   Component-level JS also checks useReducedMotion(); this is the backstop.
+   ========================================================================= */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-marquee { animation: none; }
+  .text-shimmer {
+    animation: none;
+    background: none;
+    -webkit-background-clip: border-box;
+    background-clip: border-box;
+    color: var(--color-surface-900);
+  }
+  .conic-ring::before { animation: none; }
 }

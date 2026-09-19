@@ -1,6 +1,10 @@
 // src/components/dashboard/DeltaIngestionModal.tsx
+// All upload/analyse logic and props are unchanged — only chrome.
+
 import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import Icon from "../ui/Icon";
+import Chip, { Kicker } from "../ui/Chip";
 import EvidenceChannelCard, {
     type ChannelConfig,
     type ChannelFile,
@@ -45,7 +49,7 @@ const DELTA_LOGS = [
     "[Resolution] New phone IMEI matched to Amit Singh net-banking session.",
     "[Diff] 4 new facts added to Fact-Sheet. Lead Board updated.",
     "[Theory] Crime Theory bumped to v2 (superseding preliminary v1).",
-    "[Complete] In-place delta analysis complete."
+    "[Complete] In-place delta analysis complete.",
 ];
 
 interface DeltaIngestionModalProps {
@@ -65,12 +69,14 @@ export default function DeltaIngestionModal({
         fir_text: [
             {
                 id: "delta-1",
-                file: new File([""], "supplementary_chargesheet_bns111.docx", { type: "application/docx" }),
+                file: new File([""], "supplementary_chargesheet_bns111.docx", {
+                    type: "application/docx",
+                }),
                 name: "supplementary_chargesheet_bns111.docx",
                 size: 240000,
                 status: "queued",
                 progress: 100,
-            }
+            },
         ],
         cdr_financial: [],
         cctv_video: [],
@@ -92,7 +98,6 @@ export default function DeltaIngestionModal({
             status: "queued",
             progress: 0,
         }));
-
         setChannelFiles((prev) => ({
             ...prev,
             [channelId]: [...(prev[channelId] || []), ...addedItems],
@@ -108,27 +113,22 @@ export default function DeltaIngestionModal({
 
     const handleRunDelta = async () => {
         if (totalFiles === 0) return;
-
         setIsProcessing(true);
         setStreamedLogs([]);
 
-        // Upload any queued files to the live backend
         for (const [channelId, fileList] of Object.entries(channelFiles)) {
             const docType: DocumentType =
                 channelId === "cctv_video"
                     ? "video"
                     : channelId === "audio_recordings"
-                    ? "voice"
-                    : channelId === "scanned_doc"
-                    ? "image"
-                    : "text";
+                      ? "voice"
+                      : channelId === "scanned_doc"
+                        ? "image"
+                        : "text";
 
             for (const item of fileList) {
                 if (item.file && item.file.size > 0) {
-                    setStreamedLogs((prev) => [
-                        ...prev,
-                        `[Upload] Ingesting ${item.name} (${docType})...`,
-                    ]);
+                    setStreamedLogs((prev) => [...prev, `[Upload] Ingesting ${item.name} (${docType})...`]);
                     try {
                         const { document_id, upload_url } = await initiateUpload({
                             case_id: caseId,
@@ -139,15 +139,9 @@ export default function DeltaIngestionModal({
                         });
                         await uploadToStorage(upload_url, item.file);
                         await confirmUpload(document_id, true);
-                        setStreamedLogs((prev) => [
-                            ...prev,
-                            `[Confirmed] ${item.name} registered into pipeline.`,
-                        ]);
-                    } catch (e: any) {
-                        setStreamedLogs((prev) => [
-                            ...prev,
-                            `[Note] Uploading simulated tranche for ${item.name}`,
-                        ]);
+                        setStreamedLogs((prev) => [...prev, `[Confirmed] ${item.name} registered into pipeline.`]);
+                    } catch {
+                        setStreamedLogs((prev) => [...prev, `[Note] Uploading simulated tranche for ${item.name}`]);
                     }
                 }
             }
@@ -159,15 +153,9 @@ export default function DeltaIngestionModal({
         }
 
         try {
-            setStreamedLogs((prev) => [
-                ...prev,
-                "[Synthesis] Triggering AI Crime Theory & GNN Historical Analysis...",
-            ]);
+            setStreamedLogs((prev) => [...prev, "[Synthesis] Triggering AI Crime Theory & GNN Historical Analysis..."]);
             await triggerHistoricalAnalysis(caseId);
-            setStreamedLogs((prev) => [
-                ...prev,
-                "[Complete] Case Knowledge Graph & Theories updated successfully.",
-            ]);
+            setStreamedLogs((prev) => [...prev, "[Complete] Case Knowledge Graph & Theories updated successfully."]);
         } catch {
             // Graceful fallback to mock diff
         }
@@ -179,94 +167,105 @@ export default function DeltaIngestionModal({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-end bg-surface-0/80 backdrop-blur-sm font-sans">
-            <div
-                className="absolute inset-0"
-                onClick={() => !isProcessing && onClose()}
-            />
+        <AnimatePresence>
+            <div className="fixed inset-0 z-50 flex items-center justify-end">
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => !isProcessing && onClose()}
+                    className="absolute inset-0 bg-surface-0/80 backdrop-blur-md"
+                />
 
-            <div className="relative z-10 h-full w-full max-w-xl bg-surface-100 border-l border-surface-300 shadow-2xl flex flex-col justify-between overflow-hidden">
-                {/* Header */}
-                <div className="p-5 border-b border-surface-200 flex items-center justify-between bg-surface-100/90">
-                    <div className="flex items-center gap-2.5">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-insignia-500/20 text-insignia-400">
-                            <Icon name="upload" size={16} />
-                        </div>
-                        <div>
-                            <h3 className="text-sm font-bold text-surface-900">
-                                Delta Evidence Ingestion
-                            </h3>
-                            <p className="text-xs font-mono text-surface-500">
-                                Append evidence to current case record
-                            </p>
-                        </div>
-                    </div>
-
-                    <button
-                        onClick={onClose}
-                        disabled={isProcessing}
-                        className="text-surface-400 hover:text-surface-900 p-1 rounded"
-                    >
-                        <Icon name="cross" size={16} />
-                    </button>
-                </div>
-
-                {/* Body / Channels Stack */}
-                <div className="flex-1 overflow-y-auto p-5 space-y-4">
-                    <div className="text-xs text-surface-600 bg-surface-0 p-3 rounded-lg border border-surface-200 font-mono">
-                        Delta Ingestion Pipeline: Ingested evidence will generate an additive diff, update the Fact-Sheet, and produce a versioned Crime Reconstruction Theory.
-                    </div>
-
-                    {isProcessing ? (
-                        <div className="h-72 rounded-xl border border-surface-300 bg-surface-0 p-4 font-mono text-xs text-insignia-400/95 overflow-y-auto space-y-2">
-                            <div className="flex items-center gap-2 text-surface-400 mb-2 border-b border-surface-200 pb-2">
-                                <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-insignia-500 border-t-transparent" />
-                                <span>Re-running link prediction engine...</span>
+                <motion.div
+                    initial={{ x: 60, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    exit={{ x: 60, opacity: 0 }}
+                    transition={{ duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
+                    className="glass-strong relative z-10 flex h-full w-full max-w-xl flex-col justify-between shadow-2xl"
+                >
+                    {/* Header */}
+                    <div className="flex items-center justify-between border-b border-surface-300/80 p-5">
+                        <div className="flex items-center gap-2.5">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-ember-500/35 bg-ember-500/12 text-ember-300">
+                                <Icon name="upload" size={16} />
                             </div>
-                            {streamedLogs.map((log, idx) => (
-                                <div key={idx}>{log}</div>
-                            ))}
+                            <div>
+                                <Kicker tone="ember">Delta evidence ingestion</Kicker>
+                                <p className="mt-0.5 font-mono text-[11px] text-surface-500">
+                                    Append evidence to current case record
+                                </p>
+                            </div>
                         </div>
-                    ) : (
-                        DELTA_CHANNELS.map((channel) => (
-                            <EvidenceChannelCard
-                                key={channel.id}
-                                config={channel}
-                                files={channelFiles[channel.id] || []}
-                                onFilesAdded={handleFilesAdded}
-                                onFileRemoved={handleFileRemoved}
-                            />
-                        ))
-                    )}
-                </div>
-
-                {/* Footer */}
-                <div className="p-4 border-t border-surface-200 bg-surface-100/95 flex items-center justify-between">
-                    <div className="text-xs font-mono text-surface-500">
-                        {totalFiles} supplementary files queued
-                    </div>
-
-                    <div className="flex items-center gap-2">
                         <button
                             type="button"
                             onClick={onClose}
                             disabled={isProcessing}
-                            className="px-3.5 py-1.5 rounded-lg border border-surface-300 text-xs font-semibold text-surface-400 hover:text-surface-200"
+                            className="cursor-pointer rounded-md p-1 text-surface-500 transition-colors hover:text-surface-900 disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleRunDelta}
-                            disabled={totalFiles === 0 || isProcessing}
-                            className="flex items-center gap-2 rounded-lg bg-insignia-500 hover:bg-insignia-400 text-surface-0 font-bold px-4 py-2 text-xs transition-colors shadow disabled:opacity-40 cursor-pointer"
-                        >
-                            <Icon name="radar" size={14} />
-                            <span>Re-run Pipeline</span>
+                            <Icon name="cross" size={16} />
                         </button>
                     </div>
-                </div>
+
+                    {/* Body */}
+                    <div className="flex-1 space-y-4 overflow-y-auto p-5">
+                        <div className="rounded-lg border border-surface-300 bg-surface-0/50 p-3 font-mono text-xs text-surface-600">
+                            Delta ingestion pipeline: ingested evidence generates an additive diff,
+                            updates the fact-sheet, and produces a versioned crime-reconstruction
+                            theory.
+                        </div>
+
+                        {isProcessing ? (
+                            <div className="h-72 space-y-2 overflow-y-auto rounded-xl border border-surface-300 bg-surface-0/70 p-4 font-mono text-xs text-ember-200">
+                                <div className="mb-2 flex items-center gap-2 border-b border-surface-300/70 pb-2 text-surface-500">
+                                    <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-ember-500 border-t-transparent" />
+                                    <span>Re-running link prediction engine…</span>
+                                </div>
+                                {streamedLogs.map((log, idx) => (
+                                    <div key={idx}>{log}</div>
+                                ))}
+                            </div>
+                        ) : (
+                            DELTA_CHANNELS.map((channel) => (
+                                <EvidenceChannelCard
+                                    key={channel.id}
+                                    config={channel}
+                                    files={channelFiles[channel.id] || []}
+                                    onFilesAdded={handleFilesAdded}
+                                    onFileRemoved={handleFileRemoved}
+                                />
+                            ))
+                        )}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="flex items-center justify-between border-t border-surface-300/80 p-4">
+                        <Chip tone="neutral" size="sm">
+                            {totalFiles} supplementary files queued
+                        </Chip>
+
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                disabled={isProcessing}
+                                className="cursor-pointer rounded-lg border border-surface-300 px-3.5 py-1.5 text-xs font-semibold text-surface-600 transition-colors hover:text-surface-900 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleRunDelta}
+                                disabled={totalFiles === 0 || isProcessing}
+                                className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-ember-500 px-4 py-2 text-xs font-bold text-surface-900 shadow-[inset_0_1px_0_0_rgba(246,242,237,0.18)] transition-colors hover:bg-ember-400 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                                <Icon name="radar" size={14} />
+                                <span>Re-run pipeline</span>
+                            </button>
+                        </div>
+                    </div>
+                </motion.div>
             </div>
-        </div>
+        </AnimatePresence>
     );
 }

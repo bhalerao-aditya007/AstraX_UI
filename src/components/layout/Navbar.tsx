@@ -1,6 +1,49 @@
 // src/components/layout/Navbar.tsx
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import Icon from "../ui/Icon";
+import Chip from "../ui/Chip";
+
+/** Inline monogram — used if /astrax-logo.png is absent (air-gapped safe). */
+function Mark({ size = 26 }: { size?: number }) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden>
+            <defs>
+                <linearGradient id="astrax-mark" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#d89873" />
+                    <stop offset="100%" stopColor="#a85b3a" />
+                </linearGradient>
+            </defs>
+            <rect x="1" y="1" width="30" height="30" rx="8" fill="#1a1817" stroke="#302d2b" />
+            <path
+                d="M16 6.5 25 25.5h-4.1L16 14.9l-4.9 10.6H7z"
+                fill="url(#astrax-mark)"
+            />
+            <circle cx="16" cy="21.5" r="1.9" fill="#5f86aa" />
+        </svg>
+    );
+}
+
+function Wordmark() {
+    const [broken, setBroken] = useState(false);
+    return (
+        <Link to="/" className="group flex items-center gap-2.5">
+            {broken ? (
+                <Mark size={28} />
+            ) : (
+                <img
+                    src="/astrax-logo.png"
+                    alt=""
+                    onError={() => setBroken(true)}
+                    className="h-7 w-7 rounded-lg object-contain transition-transform group-hover:scale-105"
+                />
+            )}
+            <span className="font-display text-[17px] font-extrabold leading-none tracking-tight text-surface-900">
+                AstraX
+            </span>
+        </Link>
+    );
+}
 
 export default function Navbar() {
     const location = useLocation();
@@ -11,52 +54,49 @@ export default function Navbar() {
         return false;
     };
 
-    return (
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-surface-300 bg-surface-100/95 px-5 z-30 font-sans backdrop-blur-md">
-            {/* Logo + Emblem */}
-            <div className="flex items-center gap-6">
-                <Link to="/" className="flex items-center gap-3 group">
-                    <img src="/astrax-logo.png" alt="AstraX Logo" className="h-9 w-9 rounded-lg object-contain group-hover:scale-105 transition-transform" />
-                    <span className="text-lg font-extrabold tracking-tight text-surface-900 leading-none" style={{ fontFamily: "Georgia, serif" }}>
-                        AstraX
-                    </span>
-                </Link>
+    const links = [
+        { to: "/intake", label: "Evidence Intake", match: ["/intake"] },
+        { to: "/dashboard", label: "Case Directory", match: ["/dashboard", "/cases"] },
+    ];
 
-                {/* Primary Nav Links */}
-                <nav className="hidden sm:flex items-center gap-1 font-mono text-xs">
-                    <Link
-                        to="/intake"
-                        className={`px-3 py-1.5 rounded-md font-semibold transition-colors ${
-                            isActive("/intake")
-                                ? "bg-insignia-500/15 text-insignia-400 border border-insignia-500/30"
-                                : "text-surface-400 hover:text-surface-200 hover:bg-surface-200/50"
-                        }`}
-                    >
-                        Evidence Intake
-                    </Link>
-                    <Link
-                        to="/dashboard"
-                        className={`px-3 py-1.5 rounded-md font-semibold transition-colors ${
-                            isActive("/dashboard") || isActive("/cases")
-                                ? "bg-insignia-500/15 text-insignia-400 border border-insignia-500/30"
-                                : "text-surface-400 hover:text-surface-200 hover:bg-surface-200/50"
-                        }`}
-                    >
-                        Case Directory
-                    </Link>
+    return (
+        <header className="glass-strong lit-edge z-30 flex h-14 shrink-0 items-center justify-between border-b border-surface-300 px-5">
+            <div className="flex items-center gap-7">
+                <Wordmark />
+
+                <nav className="hidden items-center gap-1 text-xs sm:flex">
+                    {links.map((l) => {
+                        const active = l.match.some((m) => isActive(m));
+                        return (
+                            <Link
+                                key={l.to}
+                                to={l.to}
+                                className={`relative rounded-md px-3 py-1.5 font-medium transition-colors ${
+                                    active
+                                        ? "bg-ember-500/12 text-ember-200"
+                                        : "text-surface-500 hover:bg-surface-200/60 hover:text-surface-800"
+                                }`}
+                            >
+                                {l.label}
+                                {active && (
+                                    <span className="absolute inset-x-3 -bottom-[5px] h-px bg-ember-400/70" />
+                                )}
+                            </Link>
+                        );
+                    })}
                 </nav>
             </div>
 
-            {/* Right Status Indicator */}
-            <div className="flex items-center gap-4 text-xs font-mono">
-                <div className="hidden md:flex items-center gap-2 text-surface-400">
-                    <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-                    <span>Air Gapped System</span>
-                </div>
+            <div className="flex items-center gap-3">
+                <span className="hidden md:inline-flex">
+                    <Chip tone="confirmed" size="sm" live>
+                        Air-gapped
+                    </Chip>
+                </span>
 
                 <Link
                     to="/intake"
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-insignia-500 hover:bg-insignia-400 text-surface-0 font-bold px-3 py-1.5 text-xs transition-colors shadow cursor-pointer"
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-ember-500 px-3 py-1.5 text-xs font-semibold text-surface-900 shadow-[inset_0_1px_0_0_rgba(246,242,237,0.18)] transition-colors hover:bg-ember-400"
                 >
                     <Icon name="plus" size={13} />
                     <span>New Intake</span>

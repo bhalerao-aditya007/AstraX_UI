@@ -1,5 +1,7 @@
 import type { Document } from "../../services/documents";
 import DocumentItem from "./DocumentItem";
+import EmptyState from "../ui/EmptyState";
+import { RevealGroup, RevealItem } from "../motion";
 
 interface DocumentListProps {
     documents: Document[];
@@ -8,18 +10,23 @@ interface DocumentListProps {
 export default function DocumentList({ documents }: DocumentListProps) {
     if (documents.length === 0) {
         return (
-            <div className="rounded-xl border border-dashed border-surface-300 p-10 text-center">
-                <p className="text-sm font-medium text-surface-500">No documents in this case yet.</p>
-                <p className="mt-1 text-xs text-surface-400">Upload a document to get started.</p>
-            </div>
+            <EmptyState
+                dense
+                icon="file-text"
+                title="No documents in this case yet"
+                body="Upload a document to get started."
+                stamp="0 exhibits"
+            />
         );
     }
 
     return (
-        <div className="space-y-3">
+        <RevealGroup className="space-y-3">
             {documents.map((document) => (
-                <DocumentItem key={document.id} document={document} />
+                <RevealItem key={document.id}>
+                    <DocumentItem document={document} />
+                </RevealItem>
             ))}
-        </div>
+        </RevealGroup>
     );
 }

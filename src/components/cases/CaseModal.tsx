@@ -19,10 +19,8 @@ export default function CaseModal({ existingCase, onSubmit, onClose }: CaseModal
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!name.trim()) return;
-
         setIsSubmitting(true);
         setError(null);
-
         try {
             await onSubmit(name.trim());
             onClose();
@@ -34,24 +32,31 @@ export default function CaseModal({ existingCase, onSubmit, onClose }: CaseModal
     }
 
     return (
-        <Modal title={isEditing ? "Edit Case" : "Create Case"} onClose={onClose}>
+        <Modal
+            kicker={isEditing ? "Amend registry" : "Open new record"}
+            title={isEditing ? "Edit case" : "Register case"}
+            onClose={onClose}
+        >
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                    <label htmlFor="case-name" className="mb-1.5 block text-sm font-medium text-surface-700">
-                        Case Name
+                    <label
+                        htmlFor="case-name"
+                        className="mb-1.5 block font-mono text-[10px] uppercase tracking-wider text-surface-500"
+                    >
+                        Case / FIR identifier
                     </label>
                     <input
                         id="case-name"
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder="e.g. Financial Fraud Investigation"
+                        placeholder="e.g. FIR 108/2026 PS Kashmere Gate"
                         autoFocus
-                        className="w-full rounded-lg border border-surface-300 bg-surface-200 px-3 py-2 text-sm text-surface-900 placeholder-surface-500 outline-none focus:border-amber-500/80 focus:ring-2 focus:ring-amber-500/20"
+                        className="w-full rounded-lg border border-surface-300 bg-surface-0/70 px-3 py-2 font-mono text-sm text-surface-900 outline-none transition placeholder:text-surface-500 focus:border-ember-500/70 focus:ring-2 focus:ring-ember-500/15"
                     />
                 </div>
 
-                {error && <p className="text-sm text-rose-400 font-mono">{error}</p>}
+                {error && <p className="font-mono text-xs text-red-400">{error}</p>}
 
                 <div className="flex justify-end gap-2 pt-1">
                     <Button variant="ghost" size="sm" type="button" onClick={onClose}>
@@ -63,7 +68,7 @@ export default function CaseModal({ existingCase, onSubmit, onClose }: CaseModal
                         type="submit"
                         disabled={!name.trim() || isSubmitting}
                     >
-                        {isSubmitting ? "Saving…" : isEditing ? "Save" : "Create"}
+                        {isSubmitting ? "Saving…" : isEditing ? "Save" : "Register"}
                     </Button>
                 </div>
             </form>

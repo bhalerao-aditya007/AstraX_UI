@@ -1,5 +1,9 @@
 // src/components/layout/DashboardLayout.tsx
+// Same 3-column concept (evidence rail · workspace · inspector) and identical
+// state/resize logic — only the chrome and transitions were redesigned.
+
 import { useEffect, useState, useRef } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useWorkspaceStore } from "../../store/workspaceStore";
 import { useDocumentsStore } from "../../store/documentsStore";
 import Navbar from "./Navbar";
@@ -15,8 +19,7 @@ export default function DashboardLayout() {
 
     const [leftOpen, setLeftOpen] = useState(true);
     const [rightOpen, setRightOpen] = useState(false);
-    
-    // Resizing logic for right panel
+
     const [rightWidth, setRightWidth] = useState(520);
     const isDraggingRef = useRef(false);
 
@@ -24,18 +27,14 @@ export default function DashboardLayout() {
         const handleMouseMove = (e: MouseEvent) => {
             if (!isDraggingRef.current) return;
             const newWidth = window.innerWidth - e.clientX;
-            if (newWidth > 320 && newWidth < window.innerWidth * 0.8) {
-                setRightWidth(newWidth);
-            }
+            if (newWidth > 320 && newWidth < window.innerWidth * 0.8) setRightWidth(newWidth);
         };
-
         const handleMouseUp = () => {
             if (isDraggingRef.current) {
                 isDraggingRef.current = false;
                 document.body.style.cursor = "";
             }
         };
-
         document.addEventListener("mousemove", handleMouseMove);
         document.addEventListener("mouseup", handleMouseUp);
         return () => {
@@ -44,79 +43,83 @@ export default function DashboardLayout() {
         };
     }, []);
 
-    // Auto-open document viewer when a document is selected
     useEffect(() => {
-        if (selectedDocumentId) {
-            setRightOpen(true);
-        }
+        if (selectedDocumentId) setRightOpen(true);
     }, [selectedDocumentId]);
 
     return (
-        <div className="flex h-screen flex-col bg-surface-0 font-sans text-surface-700 overflow-hidden">
+        <div className="flex h-screen flex-col overflow-hidden bg-surface-0 text-surface-700">
             <Navbar />
-            
-            {/* Command Bar Toolbar for toggling panels */}
-            <div className="flex items-center justify-between border-b border-surface-300 bg-surface-100/90 px-4 py-1.5 z-20 font-mono text-xs">
+
+            {/* Command strip */}
+            <div className="z-20 flex items-center justify-between border-b border-surface-300 bg-surface-50/70 px-4 py-1.5 font-mono text-[11px] backdrop-blur">
                 <div className="flex items-center gap-3">
-                    <button 
+                    <button
+                        type="button"
                         onClick={() => setLeftOpen(!leftOpen)}
-                        className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-surface-400 hover:text-surface-200 hover:bg-surface-200 transition-colors cursor-pointer"
+                        className="flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-surface-500 transition-colors hover:bg-surface-200 hover:text-surface-800"
                     >
-                        <Icon name="folder" size={13} />
-                        <span>{leftOpen ? "Hide Cases" : "Show Cases"}</span>
+                        <Icon name="folder" size={12} />
+                        <span>{leftOpen ? "Hide registry" : "Show registry"}</span>
                     </button>
-                    <span className="text-surface-400">|</span>
-                    <span className="text-surface-400">Operational Records Database</span>
+                    <span className="text-surface-400">·</span>
+                    <span className="text-surface-500">Operational records database</span>
                 </div>
 
                 {selectedDocumentId && (
-                    <button 
+                    <button
+                        type="button"
                         onClick={() => setRightOpen(!rightOpen)}
-                        className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-surface-400 hover:text-surface-200 hover:bg-surface-200 transition-colors cursor-pointer"
+                        className="flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-surface-500 transition-colors hover:bg-surface-200 hover:text-surface-800"
                     >
-                        <span>{rightOpen ? "Hide Document" : "Show Document"}</span>
-                        <Icon name="file-text" size={13} />
+                        <span>{rightOpen ? "Close exhibit" : "Open exhibit"}</span>
+                        <Icon name="file-text" size={12} />
                     </button>
                 )}
             </div>
 
             <div className="relative flex min-h-0 flex-1 overflow-hidden">
-                {/* Left Panel: Cases List */}
-                <div
-                    className={`transition-all duration-300 ease-in-out border-r border-surface-300 bg-surface-100 flex shrink-0 ${
-                        leftOpen ? "w-80 opacity-100" : "w-0 opacity-0 overflow-hidden border-none"
-                    }`}
+                {/* Left: evidence / case rail */}
+                <motion.div
+                    animate={{ width: leftOpen ? 320 : 0, opacity: leftOpen ? 1 : 0 }}
+                    initial={false}
+                    transition={{ duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
+                    className="flex shrink-0 overflow-hidden"
                 >
-                    <div className="w-80 flex shrink-0 h-full">
+                    <div className="flex h-full w-80 shrink-0">
                         <Sidebar />
                     </div>
-                </div>
+                </motion.div>
 
-                {/* Middle Panel: Workspace */}
-                <div className="flex min-w-0 flex-1 flex-col bg-surface-0 overflow-y-auto">
+                {/* Centre: workspace */}
+                <div className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-surface-0">
                     <Workspace />
                 </div>
 
-                {/* Right Panel: Document Viewer */}
-                {rightOpen && selectedDocument && (
-                    <>
-                        {/* Resizer Handle */}
-                        <div 
-                            className="w-1.5 cursor-col-resize hover:bg-insignia-400 active:bg-insignia-500 z-30 transition-colors bg-surface-300"
-                            onMouseDown={() => {
-                                isDraggingRef.current = true;
-                                document.body.style.cursor = "col-resize";
-                            }}
-                        />
-
-                        <div 
-                            style={{ width: `${rightWidth}px` }} 
-                            className="shrink-0 border-l border-surface-300 bg-surface-100 h-full flex flex-col z-20 shadow-2xl"
-                        >
-                            <DocumentViewer document={selectedDocument} />
-                        </div>
-                    </>
-                )}
+                {/* Right: exhibit inspector */}
+                <AnimatePresence>
+                    {rightOpen && selectedDocument && (
+                        <>
+                            <div
+                                className="z-30 w-1.5 cursor-col-resize bg-surface-300 transition-colors hover:bg-ember-500/70"
+                                onMouseDown={() => {
+                                    isDraggingRef.current = true;
+                                    document.body.style.cursor = "col-resize";
+                                }}
+                            />
+                            <motion.div
+                                initial={{ x: 40, opacity: 0 }}
+                                animate={{ x: 0, opacity: 1 }}
+                                exit={{ x: 40, opacity: 0 }}
+                                transition={{ duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
+                                style={{ width: `${rightWidth}px` }}
+                                className="z-20 flex h-full shrink-0 flex-col border-l border-surface-300 bg-surface-50/80 backdrop-blur"
+                            >
+                                <DocumentViewer document={selectedDocument} />
+                            </motion.div>
+                        </>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );

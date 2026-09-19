@@ -1,14 +1,20 @@
 // src/components/dashboard/analytics/LeadBoard.tsx
+// Normalisation logic and props unchanged. Cards are now tilt-responsive
+// evidence slips; resolving a lead plays the "link confirmed" snap.
+
 import { useState, useEffect } from "react";
 import Icon from "../../ui/Icon";
 import ConfidenceBadge from "../../ui/ConfidenceBadge";
+import Chip, { Kicker } from "../../ui/Chip";
+import { RevealGroup, RevealItem, TiltCard } from "../../motion";
 import { mockPhantomLeads, type PhantomLead } from "../../../data/mockCaseData";
+import { USE_MOCK_API } from "../../../config";
 
-const COLUMNS: Array<{ id: PhantomLead["status"]; label: string; dotColor: string }> = [
-    { id: "open", label: "Open Investigative Leads", dotColor: "bg-purple-400" },
-    { id: "requested", label: "Formal Data Requested", dotColor: "bg-amber-400" },
-    { id: "resolved", label: "Resolved / Merged", dotColor: "bg-emerald-400" },
-    { id: "dismissed", label: "Dismissed / Inactive", dotColor: "bg-surface-400" },
+const COLUMNS: Array<{ id: PhantomLead["status"]; label: string; tone: "hypothesis" | "alert" | "confirmed" | "neutral" }> = [
+    { id: "open", label: "Open leads", tone: "hypothesis" },
+    { id: "requested", label: "Data requested", tone: "alert" },
+    { id: "resolved", label: "Resolved / merged", tone: "confirmed" },
+    { id: "dismissed", label: "Dismissed", tone: "neutral" },
 ];
 
 interface LeadBoardProps {
@@ -16,204 +22,203 @@ interface LeadBoardProps {
     data?: PhantomLead[];
 }
 
-import { USE_MOCK_API } from "../../../config";
-
 export default function LeadBoard({ onSelectLead, data }: LeadBoardProps) {
-    const normalizeLeads = (rawLeads: any[]): PhantomLead[] => {
-        return (rawLeads || []).map((l, idx) => {
+    const normalizeLeads = (rawLeads: any[]): PhantomLead[] =>
+        (rawLeads || []).map((l, idx) => {
             const rawStatus = (l.status || "").toLowerCase();
             const status: PhantomLead["status"] = rawStatus.includes("resolv")
                 ? "resolved"
                 : rawStatus.includes("dismiss")
-                ? "dismissed"
-                : rawStatus.includes("pend") || rawStatus.includes("request")
-                ? "requested"
-                : "open";
+                  ? "dismissed"
+                  : rawStatus.includes("pend") || rawStatus.includes("request")
+                    ? "requested"
+                    : "open";
 
             const partialAttrs = l.partialAttributes || {
-                "Lead Priority": l.priority || "HIGH",
-                "Assigned Investigator": l.assignedTo || "Field Officer",
-                "Target Entity": l.targetEntity || "Subject of Interest",
+                "Lead priority": l.priority || "HIGH",
+                "Assigned investigator": l.assignedTo || "Field officer",
+                "Target entity": l.targetEntity || "Subject of interest",
             };
 
             return {
                 id: l.id || `lead-${idx + 1}`,
-                title: l.title || "Evidentiary Investigation Lead",
+                title: l.title || "Evidentiary investigation lead",
                 phantomType: l.phantomType || "person",
                 confidenceScore: l.confidenceScore ?? l.confidence ?? 0.92,
                 status,
                 partialAttributes: partialAttrs,
-                recommendedAction: l.recommendedAction || l.summary || "Verify corroborating evidence and interrogate leads.",
-                sourceDocument: l.sourceDocument || "Primary Incident Record",
+                recommendedAction:
+                    l.recommendedAction || l.summary || "Verify corroborating evidence and interrogate leads.",
+                sourceDocument: l.sourceDocument || "Primary incident record",
                 dateIdentified: l.dateIdentified || "2026-09-04",
-                originEvidence: l.originEvidence || "Primary Incident Record",
+                originEvidence: l.originEvidence || "Primary incident record",
             };
         });
-    };
 
-    const [leads, setLeads] = useState<PhantomLead[]>(normalizeLeads(data !== undefined ? data : (USE_MOCK_API ? mockPhantomLeads : [])));
+    const [leads, setLeads] = useState<PhantomLead[]>(
+        normalizeLeads(data !== undefined ? data : USE_MOCK_API ? mockPhantomLeads : [])
+    );
+    const [snapped, setSnapped] = useState<string | null>(null);
 
     useEffect(() => {
-        if (data !== undefined) {
-            setLeads(normalizeLeads(data));
-        }
+        if (data !== undefined) setLeads(normalizeLeads(data));
     }, [data]);
 
     const advanceStatus = (leadId: string, nextStatus: PhantomLead["status"]) => {
-        setLeads((prev) =>
-            prev.map((l) => (l.id === leadId ? { ...l, status: nextStatus } : l))
-        );
+        setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, status: nextStatus } : l)));
+        if (nextStatus === "resolved") {
+            setSnapped(leadId);
+            window.setTimeout(() => setSnapped(null), 700);
+        }
     };
+
+    const openCount = leads.filter((l) => l.status === "open").length;
 
     return (
         <div className="flex flex-col gap-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-surface-300 pb-3">
+            <div className="flex flex-col items-start justify-between gap-2 border-b border-surface-300 pb-3 sm:flex-row sm:items-center">
                 <div>
-                    <h3 className="text-base font-bold text-surface-900 tracking-tight flex items-center gap-2">
-                        <span className="flex h-5 w-5 items-center justify-center rounded bg-purple-950/80 border border-purple-500/50 text-purple-300 text-xs font-mono font-bold">
-                            ?
-                        </span>
-                        <span>Investigative Lead Board — Phantom Entity Lifecycle</span>
-                    </h3>
-                    <p className="text-xs text-surface-500 mt-0.5">
-                        Tracks unconfirmed node slots, partial identifier attributes, and operational subpoena requests.
+                    <Kicker tone="ember">Phantom entity lifecycle</Kicker>
+                    <p className="mt-1.5 text-xs text-surface-500">
+                        Unconfirmed node slots, partial identifier attributes and operational
+                        subpoena requests.
                     </p>
                 </div>
-
-                <div className="flex items-center gap-2 text-xs font-mono text-purple-300 bg-purple-950/40 border border-purple-500/30 px-2.5 py-1 rounded-md">
-                    <span>{leads.filter((l) => l.status === "open").length} Open Unresolved Leads</span>
-                </div>
+                <Chip tone="hypothesis" size="sm" dot>
+                    {openCount} open unresolved
+                </Chip>
             </div>
 
-            {/* Kanban Columns Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {COLUMNS.map((col) => {
                     const columnLeads = leads.filter((l) => l.status === col.id);
-
                     return (
                         <div
                             key={col.id}
-                            className="flex flex-col rounded-xl border border-surface-300 bg-surface-100/60 p-3 min-h-[320px]"
+                            className="flex min-h-[320px] flex-col rounded-xl border border-surface-300 bg-surface-100/50 p-3"
                         >
-                            {/* Column Header */}
-                            <div className="flex items-center justify-between border-b border-surface-200/80 pb-2.5 mb-3">
-                                <div className="flex items-center gap-2">
-                                    <span className={`h-2 w-2 rounded-full ${col.dotColor}`} />
-                                    <span className="text-xs font-bold uppercase tracking-wider text-surface-800">
-                                        {col.label}
-                                    </span>
-                                </div>
-                                <span className="font-mono text-xs text-surface-500 bg-surface-200 px-1.5 py-0.5 rounded">
+                            <div className="mb-3 flex items-center justify-between border-b border-surface-300/70 pb-2.5">
+                                <Chip tone={col.tone} size="xs" dot>
+                                    {col.label}
+                                </Chip>
+                                <span className="rounded bg-surface-200 px-1.5 py-0.5 font-mono text-[10px] text-surface-500">
                                     {columnLeads.length}
                                 </span>
                             </div>
 
-                            {/* Card Stack */}
-                            <div className="flex-1 space-y-3 overflow-y-auto pr-0.5">
+                            <RevealGroup className="flex-1 space-y-3 overflow-y-auto pr-0.5">
                                 {columnLeads.length === 0 ? (
-                                    <div className="h-32 flex items-center justify-center text-center text-xs text-surface-400 italic">
-                                        No leads in this stage
+                                    <div className="flex h-28 items-center justify-center rounded-lg border border-dashed border-surface-300/80 text-center font-mono text-[10px] text-surface-500">
+                                        nothing at this stage
                                     </div>
                                 ) : (
                                     columnLeads.map((lead) => (
-                                        <div
-                                            key={lead.id}
-                                            id={lead.id}
-                                            onClick={() => onSelectLead && onSelectLead(lead)}
-                                            className="group cursor-pointer rounded-lg border border-purple-500/40 border-dashed bg-surface-0/80 p-3.5 shadow-sm transition-all hover:border-purple-400 hover:bg-surface-0 hover:shadow-md flex flex-col gap-2.5"
-                                        >
-                                            {/* Top Tag & Confidence */}
-                                            <div className="flex items-start justify-between gap-2">
-                                                <div className="flex items-center gap-1.5">
-                                                    <div className="flex h-6 w-6 items-center justify-center rounded bg-purple-950/70 border border-purple-500/40 text-purple-300 font-bold font-mono text-xs">
-                                                        ?
+                                        <RevealItem key={lead.id}>
+                                            <TiltCard max={5}>
+                                                <div
+                                                    id={lead.id}
+                                                    onClick={() => onSelectLead?.(lead)}
+                                                    className={`hypothesis-surface shine-sweep group flex cursor-pointer flex-col gap-2.5 rounded-lg border border-purple-500/40 bg-surface-0/70 p-3.5 transition-all hover:border-purple-400 ${
+                                                        snapped === lead.id ? "link-snap" : ""
+                                                    }`}
+                                                >
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <Chip tone="hypothesis" size="xs">
+                                                            {lead.phantomType}
+                                                        </Chip>
+                                                        <ConfidenceBadge
+                                                            score={lead.confidenceScore ?? 0.85}
+                                                            size="sm"
+                                                            showPercentage={false}
+                                                        />
                                                     </div>
-                                                    <span className="text-[10px] font-mono uppercase tracking-wider text-purple-400 font-bold bg-purple-950/40 px-1.5 py-0.5 rounded">
-                                                        {lead.phantomType}
-                                                    </span>
-                                                </div>
-                                                <ConfidenceBadge score={lead.confidenceScore ?? 0.85} size="sm" />
-                                            </div>
 
-                                            {/* Lead Title */}
-                                            <h4 className="text-xs font-bold text-surface-900 group-hover:text-purple-300 transition-colors">
-                                                {lead.title}
-                                            </h4>
+                                                    <h4 className="text-xs font-bold leading-snug text-surface-900 transition-colors group-hover:text-purple-200">
+                                                        {lead.title}
+                                                    </h4>
 
-                                            {/* Partial Attributes Key-Value Box */}
-                                            <div className="rounded bg-surface-100 p-2 font-mono text-[11px] text-surface-600 space-y-1 border border-surface-200">
-                                                {Object.entries(lead.partialAttributes || {}).map(([k, v]) => (
-                                                    <div key={k} className="flex justify-between gap-2 text-[10px]">
-                                                        <span className="text-surface-400 capitalize">{k}:</span>
-                                                        <span className="text-surface-800 truncate font-semibold">{v}</span>
+                                                    <div className="space-y-1 rounded border border-surface-300/70 bg-surface-100/60 p-2 font-mono text-[10px]">
+                                                        {Object.entries(lead.partialAttributes || {}).map(
+                                                            ([k, v]) => (
+                                                                <div
+                                                                    key={k}
+                                                                    className="flex justify-between gap-2"
+                                                                >
+                                                                    <span className="capitalize text-surface-500">
+                                                                        {k}
+                                                                    </span>
+                                                                    <span className="truncate font-semibold text-surface-700">
+                                                                        {String(v)}
+                                                                    </span>
+                                                                </div>
+                                                            )
+                                                        )}
                                                     </div>
-                                                ))}
-                                            </div>
 
-                                            {/* Recommended Action */}
-                                            <div className="text-[11px] text-surface-500 leading-tight">
-                                                <strong className="text-surface-400">Action:</strong> {lead.recommendedAction}
-                                            </div>
+                                                    <p className="text-[11px] leading-snug text-surface-500">
+                                                        <strong className="text-surface-600">Action:</strong>{" "}
+                                                        {lead.recommendedAction}
+                                                    </p>
 
-                                            {/* Status Controls (One-Tap Lifecycle Advancement) */}
-                                            <div className="border-t border-surface-200/80 pt-2 flex items-center justify-between text-[10px] font-mono">
-                                                <span className="text-surface-400">Advance State:</span>
-                                                <div className="flex items-center gap-1">
-                                                    {lead.status === "open" && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                advanceStatus(lead.id, "requested");
-                                                            }}
-                                                            className="rounded bg-amber-950/70 text-amber-300 hover:bg-amber-900 px-2 py-0.5 border border-amber-500/30 transition-colors"
-                                                        >
-                                                            Request Data →
-                                                        </button>
-                                                    )}
-                                                    {lead.status === "requested" && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                advanceStatus(lead.id, "resolved");
-                                                            }}
-                                                            className="rounded bg-emerald-950/70 text-emerald-300 hover:bg-emerald-900 px-2 py-0.5 border border-emerald-500/30 transition-colors"
-                                                        >
-                                                            Resolve ✓
-                                                        </button>
-                                                    )}
-                                                    {lead.status !== "dismissed" && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                advanceStatus(lead.id, "dismissed");
-                                                            }}
-                                                            className="rounded bg-surface-200 text-surface-400 hover:text-red-400 px-1.5 py-0.5 transition-colors"
-                                                            title="Dismiss Lead"
-                                                        >
-                                                            ✕
-                                                        </button>
-                                                    )}
-                                                    {lead.status === "dismissed" && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                advanceStatus(lead.id, "open");
-                                                            }}
-                                                            className="rounded bg-surface-200 text-surface-300 hover:bg-surface-300 px-2 py-0.5 transition-colors"
-                                                        >
-                                                            Reopen
-                                                        </button>
-                                                    )}
+                                                    <div className="flex items-center justify-between border-t border-surface-300/70 pt-2 font-mono text-[10px]">
+                                                        <span className="text-surface-500">advance</span>
+                                                        <div className="flex items-center gap-1">
+                                                            {lead.status === "open" && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        advanceStatus(lead.id, "requested");
+                                                                    }}
+                                                                    className="cursor-pointer rounded border border-amber-500/30 bg-amber-500/12 px-2 py-0.5 text-amber-300 transition-colors hover:bg-amber-500/25"
+                                                                >
+                                                                    request data →
+                                                                </button>
+                                                            )}
+                                                            {lead.status === "requested" && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        advanceStatus(lead.id, "resolved");
+                                                                    }}
+                                                                    className="cursor-pointer rounded border border-emerald-500/30 bg-emerald-500/12 px-2 py-0.5 text-emerald-300 transition-colors hover:bg-emerald-500/25"
+                                                                >
+                                                                    confirm link ✓
+                                                                </button>
+                                                            )}
+                                                            {lead.status !== "dismissed" ? (
+                                                                <button
+                                                                    type="button"
+                                                                    title="Dismiss lead"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        advanceStatus(lead.id, "dismissed");
+                                                                    }}
+                                                                    className="cursor-pointer rounded bg-surface-200 px-1.5 py-0.5 text-surface-500 transition-colors hover:text-red-400"
+                                                                >
+                                                                    <Icon name="cross" size={9} />
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        advanceStatus(lead.id, "open");
+                                                                    }}
+                                                                    className="cursor-pointer rounded bg-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:text-surface-900"
+                                                                >
+                                                                    reopen
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </div>
+                                            </TiltCard>
+                                        </RevealItem>
                                     ))
                                 )}
-                            </div>
+                            </RevealGroup>
                         </div>
                     );
                 })}
