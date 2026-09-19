@@ -187,8 +187,8 @@
 :root {
   --tex-paper: url("/textures/paper-grain.png");
   --tex-cork: url("/textures/corkboard.png");
-  --tex-room: url("/textures/records-room.jpg");
-  --tex-map: url("/textures/map-terrain.jpg");
+  --tex-room: url("/textures/records-room.png");
+  --tex-map: url("/textures/map-terrain.png");
   --tex-noise: url("/textures/noise.png");
 }
 
