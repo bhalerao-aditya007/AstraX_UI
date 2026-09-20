@@ -150,13 +150,6 @@ export default function Landing() {
                                     alt="AstraX tactical dashboard"
                                     className="w-full rounded-xl border border-surface-300 object-cover"
                                 />
-
-                                {/* <div className="glass-strong absolute -left-4 top-1/4 hidden items-center gap-2.5 rounded-lg px-3.5 py-2 shadow-2xl sm:flex"> */}
-                                    <span className="relative flex h-2 w-2">
-                                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                                        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                                    </span>
-                                </div>
                             </div>
                         </TiltCard>
                     </motion.div>
