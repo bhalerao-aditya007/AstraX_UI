@@ -77,11 +77,6 @@ export default function Landing() {
 
             {/* ── Hero ────────────────────────────────────────────────── */}
             <section className="bg-records-room grain-overlay relative overflow-hidden pb-24 pt-12 lg:pb-32 lg:pt-20">
-                <div className="absolute inset-0 z-0 opacity-80">
-                    <Suspense fallback={null}>
-                        <HeroScene />
-                    </Suspense>
-                </div>
                 <div className="bg-tactical-grid pointer-events-none absolute inset-0 opacity-20" />
                 <ParticleField count={22} seed={3} className="opacity-70" />
 
