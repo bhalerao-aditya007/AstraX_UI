@@ -156,9 +156,6 @@ export default function Landing() {
                                         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                                         <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
                                     </span>
-                                    <span className="font-mono text-xs font-bold uppercase tracking-wider text-emerald-300">
-                                        Verified Intelligence Link
-                                    </span>
                                 </div>
                             </div>
                         </TiltCard>
