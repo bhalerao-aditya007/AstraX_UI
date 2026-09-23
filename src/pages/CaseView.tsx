@@ -42,6 +42,10 @@ import TimelineView from "../components/dashboard/analytics/TimelineView";
 import IdentityResolutionView from "../components/dashboard/analytics/IdentityResolutionView";
 import MOMatchList from "../components/dashboard/analytics/MOMatchList";
 import TheoryBoard from "../components/dashboard/analytics/TheoryBoard";
+import DigitalFootprint from "../components/dashboard/analytics/DigitalFootprint";
+
+// OSINT service
+import { getCaseOsint, osintFindingsToGraph, type OsintFinding } from "../services/osint";
 
 // Drawers & modals
 import CaseWorkspaceDrawer from "../components/dashboard/CaseWorkspaceDrawer";
@@ -99,6 +103,7 @@ const ACTS: {
             { id: "forensic-evidence", label: "Physical evidence", icon: "evidence-tag" },
             { id: "geo-location", label: "Geo-intelligence", icon: "map-pin" },
             { id: "timeline", label: "Chronology", icon: "clock" },
+            { id: "digital-footprint", label: "Digital footprint", icon: "radar" },
         ],
     },
     {
@@ -197,6 +202,7 @@ export default function CaseView() {
     const [liveReport, setLiveReport] = useState<AnalysisReport | null>(null);
     const [liveGraph, setLiveGraph] = useState<GraphData | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [osintFindings, setOsintFindings] = useState<OsintFinding[]>([]);
 
     const mainScrollRef = useRef<HTMLDivElement>(null);
 
@@ -213,6 +219,15 @@ export default function CaseView() {
                 .catch(() => {});
         }
     }, [caseId, cases.length, fetchCases, fetchDocuments]);
+
+    // Fetch OSINT findings (non-blocking — enrichment is always optional)
+    useEffect(() => {
+        if (caseId) {
+            getCaseOsint(caseId)
+                .then((r) => setOsintFindings(r.findings || []))
+                .catch(() => setOsintFindings([]));
+        }
+    }, [caseId]);
 
     const caseData = cases.find((c) => c.id === caseId) || {
         id: caseId || "case-1",
@@ -298,8 +313,25 @@ export default function CaseView() {
         if (activeGraphTab === "financial") return caseBundle.financialGraph;
         if (activeGraphTab === "telecom") return caseBundle.telecomGraph;
         if (activeGraphTab === "forensic") return caseBundle.forensicGraph;
-        return liveGraph && liveGraph.nodes?.length > 0 ? liveGraph : caseBundle.unifiedGraph;
-    }, [activeGraphTab, liveGraph, caseBundle]);
+
+        const base =
+            liveGraph && liveGraph.nodes?.length > 0
+                ? liveGraph
+                : caseBundle.unifiedGraph;
+
+        // Merge OSINT nodes into unified view
+        if (osintFindings.length > 0) {
+            const anchorName =
+                safeFactSheet.who?.[0]?.name || caseData.name;
+            const o = osintFindingsToGraph(osintFindings, anchorName);
+            return {
+                nodes: [...(base.nodes || []), ...o.nodes],
+                edges: [...(base.edges || []), ...o.edges],
+            };
+        }
+
+        return base;
+    }, [activeGraphTab, liveGraph, caseBundle, osintFindings, safeFactSheet.who, caseData.name]);
 
     const dynamicIdentityData = useMemo(
         () => ({
@@ -880,6 +912,17 @@ export default function CaseView() {
                                         <div className="p-5">
                                             <TimelineView onSelect={(item) => setSelectedItem(item)} />
                                         </div>
+                                    </Section>
+
+                                    <Section
+                                        id="digital-footprint"
+                                        n={7}
+                                        icon="radar"
+                                        accent="steel"
+                                        title="Digital footprint — OSINT source adapters"
+                                        subtitle="ExifTool, libphonenumber, dnstwist, Sherlock. Public-record tier only — every finding is hash-anchored and carries its collection timestamp."
+                                    >
+                                        <DigitalFootprint caseId={caseData.id} />
                                     </Section>
                                 </>
                             )}
