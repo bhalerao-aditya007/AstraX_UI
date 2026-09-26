@@ -184,7 +184,7 @@ export default function Landing() {
                             thresholds, and hide beneficial ownership behind layered corporate
                             fronts.
                         </p>
-                        <p className="mt-4 text-base leading-relaxed text-surface-500">
+                        <p className="mt-4 text-base leading-relaxed text-surface-700">
                             While investigative agencies gather gigabytes of evidence from seized
                             devices, tower pings, and bank statements, manual analysis across
                             unintegrated portals produces investigative paralysis. AstraX bridges
@@ -202,7 +202,7 @@ export default function Landing() {
                         <h2 className="font-display text-3xl font-extrabold tracking-tight text-surface-900 sm:text-4xl">
                             A Unified Tactical Analytical Ecosystem
                         </h2>
-                        <p className="mt-4 text-base text-surface-500">
+                        <p className="mt-4 text-base text-surface-700">
                             Engineered for high information density, strict evidentiary provenance,
                             and accelerated prosecutorial briefs.
                         </p>
@@ -219,7 +219,7 @@ export default function Landing() {
                                         <h3 className="font-display text-lg font-bold text-surface-900">
                                             {f.title}
                                         </h3>
-                                        <p className="mt-3 text-sm leading-relaxed text-surface-500">
+                                        <p className="mt-3 text-sm leading-relaxed text-surface-700">
                                             {f.desc}
                                         </p>
                                     </div>
@@ -268,7 +268,7 @@ export default function Landing() {
                                     <strong className="block text-surface-900">
                                         Confirmed evidentiary basis
                                     </strong>
-                                    <span className="text-surface-500">
+                                    <span className="text-surface-700">
                                         KYC mandates, NAFIS prints, and banking UTR records.
                                     </span>
                                 </div>
@@ -280,7 +280,7 @@ export default function Landing() {
                                     <strong className="block text-purple-300">
                                         Probabilistic GNN hypotheses
                                     </strong>
-                                    <span className="text-surface-500">
+                                    <span className="text-surface-700">
                                         Unconfirmed links tagged with confidence intervals for
                                         further human inquiry.
                                     </span>
@@ -292,7 +292,7 @@ export default function Landing() {
             </section>
 
             {/* ── Footer ───────────────────────────────────────────────── */}
-            <footer className="border-t border-surface-200/80 bg-surface-50 py-12 text-xs text-surface-500">
+            <footer className="border-t border-surface-200/80 bg-surface-50 py-12 text-xs text-surface-700">
                 <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
                     <div className="flex items-center gap-3">
                         <img
@@ -304,7 +304,7 @@ export default function Landing() {
                         <span className="font-display text-sm font-extrabold tracking-tight text-surface-900">
                             AstraX
                         </span>
-                        <span className="font-mono text-[11px] text-surface-500">
+                        <span className="font-mono text-[11px] text-surface-700">
                             | Tactical Crime Graph Intelligence
                         </span>
                     </div>
