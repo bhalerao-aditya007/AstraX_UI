@@ -98,8 +98,8 @@ export default function Landing() {
                             transition={{ duration: 0.65, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
                             className="mt-6 font-display text-4xl font-black leading-[1.1] tracking-tight text-surface-900 sm:text-5xl lg:text-6xl"
                         >
-                            Tactical Graph Intelligence for{" "}
-                            <ShimmerText>Organised Crime Cells</ShimmerText>
+                            From Raw Evidence to{" "}
+                            <ShimmerText>Criminal Network Maps</ShimmerText>
                         </motion.h1>
 
                         <motion.p
@@ -108,10 +108,7 @@ export default function Landing() {
                             transition={{ duration: 0.6, delay: 0.16, ease: [0.16, 1, 0.3, 1] }}
                             className="mt-6 text-base leading-relaxed text-surface-700 sm:text-lg"
                         >
-                            Autonomous multi-modality evidence ingestion, entity de-duplication, and
-                            GNN link prediction. Purpose-built for state police cyber cells to
-                            reconstruct syndicate operations while preserving strict evidentiary
-                            chain-of-custody.
+                            Drop in case documents, wiretaps, and financial ledgers. AstraX parses multi-modal exhibits, uncovers digital traces with integrated OSINT tools, and synthesizes the complete syndicate hierarchy — with verifiable citations for every finding.
                         </motion.p>
 
                         <motion.div
