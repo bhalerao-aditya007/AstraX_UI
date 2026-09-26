@@ -106,7 +106,7 @@ export default function Landing() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.6, delay: 0.16, ease: [0.16, 1, 0.3, 1] }}
-                            className="mt-6 text-base leading-relaxed text-surface-500 sm:text-lg"
+                            className="mt-6 text-base leading-relaxed text-surface-700 sm:text-lg"
                         >
                             Autonomous multi-modality evidence ingestion, entity de-duplication, and
                             GNN link prediction. Purpose-built for state police cyber cells to
@@ -178,7 +178,7 @@ export default function Landing() {
                         <h2 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-surface-900 sm:text-4xl">
                             Modern syndicates operate in data silos
                         </h2>
-                        <p className="mt-6 text-base leading-relaxed text-surface-500">
+                        <p className="mt-6 text-base leading-relaxed text-surface-700">
                             Organised criminal networks intentionally split communications across
                             disposable VoIP carriers, route payments below statutory reporting
                             thresholds, and hide beneficial ownership behind layered corporate
@@ -255,7 +255,7 @@ export default function Landing() {
                         <h2 className="font-display text-3xl font-extrabold tracking-tight text-surface-900 sm:text-4xl">
                             Transparent Link Probabilities — Leads, Not Verdicts
                         </h2>
-                        <p className="mt-6 text-base leading-relaxed text-surface-500">
+                        <p className="mt-6 text-base leading-relaxed text-surface-700">
                             Every AI-derived prediction in AstraX carries a plain-language qualifier
                             and an interactive source citation. Hypotheses stay visually and
                             structurally distinct from confirmed forensic evidence — always.
