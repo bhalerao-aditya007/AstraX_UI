@@ -167,7 +167,7 @@ function Section({
                                 {title}
                             </h3>
                             {subtitle && (
-                                <p className="mt-0.5 max-w-2xl text-xs leading-relaxed text-surface-500">
+                                <p className="mt-0.5 max-w-2xl text-xs leading-relaxed text-surface-700">
                                     {subtitle}
                                 </p>
                             )}
@@ -538,7 +538,7 @@ export default function CaseView() {
                                         title="Investigative brief & judicial narrative"
                                         subtitle="Cited natural-language brief compliant with Section 105 of the Bharatiya Sakshya Adhiniyam (BSA), 2023."
                                     >
-                                        <div className="bg-case-paper space-y-3 rounded-lg border border-surface-300/70 p-5 text-xs leading-relaxed text-surface-600">
+                                        <div className="bg-case-paper space-y-3 rounded-lg border border-surface-300/70 p-5 text-xs leading-relaxed text-surface-700">
                                             <p>
                                                 The active investigation in{" "}
                                                 <strong className="text-surface-900">{caseData.name}</strong>{" "}
@@ -570,7 +570,7 @@ export default function CaseView() {
                                                 </span>
                                                 .
                                             </p>
-                                            <p className="border-t border-surface-300/60 pt-3 font-mono text-[11px] italic text-surface-500">
+                                            <p className="border-t border-surface-300/60 pt-3 font-mono text-[11px] italic text-surface-700">
                                                 Ingestion status:{" "}
                                                 {documents.map((d) => `${d.title}: ${d.status}`).join(", ") ||
                                                     "no active documents"}
@@ -594,13 +594,13 @@ export default function CaseView() {
                                                           className="flex flex-col justify-between gap-2 rounded-lg border border-surface-300 bg-surface-0/50 p-2.5 sm:flex-row sm:items-center"
                                                       >
                                                           <div className="flex min-w-0 items-center gap-2.5">
-                                                              <span className="shrink-0 font-bold text-ember-300">
+                                                              <span className="shrink-0 font-bold text-ember-700">
                                                                   {new Date(d.created_at).toLocaleTimeString()}
                                                               </span>
                                                               <span className="font-semibold text-surface-800">
                                                                   Ingestion
                                                               </span>
-                                                              <span className="truncate text-surface-600">
+                                                              <span className="truncate text-surface-700">
                                                                   {d.title} ({d.document_type}) ·{" "}
                                                                   {d.status.toUpperCase()}
                                                               </span>
@@ -614,13 +614,13 @@ export default function CaseView() {
                                                           className="flex flex-col justify-between gap-2 rounded-lg border border-surface-300 bg-surface-0/50 p-2.5 sm:flex-row sm:items-center"
                                                       >
                                                           <div className="flex min-w-0 items-center gap-2.5">
-                                                              <span className="shrink-0 font-bold text-ember-300">
+                                                              <span className="shrink-0 font-bold text-ember-700">
                                                                   {a.time}
                                                               </span>
                                                               <span className="font-semibold text-surface-800">
                                                                   {a.event}
                                                               </span>
-                                                              <span className="truncate text-surface-600">
+                                                              <span className="truncate text-surface-700">
                                                                   {a.detail}
                                                               </span>
                                                           </div>
@@ -666,7 +666,7 @@ export default function CaseView() {
                                                 onNodeClick={(node) => setSelectedItem(node)}
                                             />
                                         </div>
-                                        <div className="mt-3 flex flex-wrap items-center gap-2 font-mono text-[10px] text-surface-500">
+                                        <div className="mt-3 flex flex-wrap items-center gap-2 font-mono text-[10px] text-surface-700">
                                             <Chip tone="steel" size="xs">
                                                 {activeGraph.nodes?.length ?? 0} nodes
                                             </Chip>
@@ -774,7 +774,7 @@ export default function CaseView() {
                                         <div className="mt-4 space-y-2">
                                             <div className="flex items-center justify-between">
                                                 <Kicker tone="ember">{caseBundle.structuringTitle}</Kicker>
-                                                <span className="font-mono text-[10px] text-amber-300">
+                                                <span className="font-mono text-[10px] text-amber-700">
                                                     {caseBundle.structuringSubtitle}
                                                 </span>
                                             </div>
@@ -788,14 +788,14 @@ export default function CaseView() {
                                                         className="flex flex-col justify-between gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/6 p-3 text-xs"
                                                     >
                                                         <div className="flex items-center justify-between gap-2">
-                                                            <span className="truncate font-mono font-bold text-amber-300">
+                                                            <span className="truncate font-mono font-bold text-amber-700">
                                                                 {alert.accountNumber}
                                                             </span>
                                                             <Chip tone="alert" size="xs">
                                                                 PMLA §3
                                                             </Chip>
                                                         </div>
-                                                        <div className="text-[11px] text-surface-600">
+                                                        <div className="text-[11px] text-surface-700">
                                                             Inflow{" "}
                                                             <strong className="font-mono text-surface-800">
                                                                 {alert.totalAmount}
@@ -853,12 +853,12 @@ export default function CaseView() {
                                                             <Icon
                                                                 name="file-text"
                                                                 size={14}
-                                                                className="shrink-0 text-surface-500"
+                                                                className="shrink-0 text-surface-700"
                                                             />
                                                             <span className="truncate font-semibold text-surface-800">
                                                                 {d.title}
                                                             </span>
-                                                            <span className="shrink-0 text-surface-500">
+                                                            <span className="shrink-0 text-surface-700">
                                                                 ({d.document_type})
                                                             </span>
                                                         </div>
@@ -1002,7 +1002,7 @@ export default function CaseView() {
                                     onClick={() => scrollToSection(s.id)}
                                     className={`relative flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs transition-colors ${
                                         isActive
-                                            ? "bg-ember-500/10 font-semibold text-ember-200"
+                                            ? "bg-ember-500/10 font-semibold text-ember-700"
                                             : "text-surface-600 hover:bg-surface-200/50 hover:text-surface-900"
                                     }`}
                                 >
@@ -1019,7 +1019,7 @@ export default function CaseView() {
                     </nav>
 
                     <div className="mt-auto rounded-lg border border-purple-500/35 bg-purple-500/6 p-2.5">
-                        <p className="font-mono text-[10px] leading-relaxed text-purple-300">
+                        <p className="font-mono text-[10px] leading-relaxed text-purple-700">
                             Investigative hypothesis — not a finding. Every dashed link and violet
                             node on this file is a lead requiring human corroboration.
                         </p>
