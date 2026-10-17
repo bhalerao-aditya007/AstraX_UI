@@ -3,12 +3,6 @@
 ## Overview
 This project was developed for the **Smart India Hackathon (SIH) - Problem Statement 189**. It is an advanced AI intelligence and case management platform designed for law enforcement agencies (Police, CBI, etc.). The system aggregates data from FIRs, Call Detail Records (CDRs), financial transactions, and physical evidence, using Graph Neural Networks (GNNs) and LLM-driven natural language processing to uncover hidden criminal networks, trace financial laundering paths, and resolve entity identities.
 
-## Demo Video
-Watch the demo of the platform in action:
-
-![Project Demo](./screenshots/demo.webm)
-
-*(If the video does not play inline, you can find it at `screenshots/demo.webm`)*
 
 ## Key Features
 - **Intelligent Workspace Dashboard**: VS Code style multi-pane layout to view case files alongside extracted AI insights.
@@ -30,12 +24,6 @@ Watch the demo of the platform in action:
   - HTML5 Canvas rendering for high-performance physics simulations
 - **Animations**: Framer Motion (Landing page hero animations)
 - **3D Rendering**: Three.js / React Three Fiber (Landing page visual effects)
-
-## Architecture
-The application is built as a Single Page Application (SPA).
-1. **Service Layer**: Abstracts API calls and currently hooks into an advanced mock data engine (`src/data/mockCaseData.ts`) to simulate complex law enforcement queries without needing the real backend yet.
-2. **State Layer**: Zustand stores (`casesStore`, `documentsStore`, `workspaceStore`) handle global state and UI panel toggles.
-3. **Visualization Engine**: Centralized D3 physics engine (`NetworkGraph.tsx`) powers multiple intelligence tabs by dynamically adjusting its visual theme (colors, node shapes) based on the context (e.g., green for financial, blue for cyber).
 
 ## Project Structure
 ```text
